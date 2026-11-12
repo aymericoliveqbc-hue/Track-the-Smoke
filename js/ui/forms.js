@@ -430,6 +430,8 @@ export function openNightForm({ date } = {}) {
             n = ex ? clone(ex) : { ...newNight(d), bedTime: n.bedTime, wakeTime: n.wakeTime };
             render();
           } }), 'Date de la soirée où la nuit commence.'),
+          n.source === 'apple-health' || n.health ? note('Données complétées depuis Apple Santé. Tes modifications priment toujours.', 'info')
+            : h('a', { class: 'chip ah-chip', href: '#/profile/applehealth' }, icon('heart', 14), 'Remplir depuis Apple Santé'),
           h('div', { class: 'grid-2' }, time('bedTime', 'Coucher'), time('tryTime', 'Essai de dormir')),
           field('Temps pour s’endormir', h('div', { class: 'stack-sm' }, latencyInput,
             h('div', { class: 'chips chips-sm' }, [15, 30, 60, 120, 240].map((m) => h('button', { type: 'button', class: 'chip', onclick: () => latencyInput.setValue(m) }, formatDuration(m))))),
@@ -636,7 +638,7 @@ export function openCategoryForm({ category: existing } = {}) {
         fill(root, 
           field('Nom', textInput({ value: c.name, placeholder: 'Ex. Cigarette électronique', oninput: (v) => { c.name = v; } })),
           field('Nom court', textInput({ value: c.short, placeholder: 'Affiché dans les listes', oninput: (v) => { c.short = v; } })),
-          field('Couleur', chips(['violet', 'green', 'blue', 'orange'].map((x) => ({ id: x, label: { violet: 'Lavande', green: 'Vert', blue: 'Bleu', orange: 'Orange' }[x] })), c.color, (v) => { c.color = v || 'orange'; }, { allowNone: false })),
+          field('Couleur', chips(['green', 'blue', 'orange', 'violet'].map((x) => ({ id: x, label: { violet: 'Bruyère', green: 'Feuille', blue: 'Ardoise', orange: 'Terre cuite' }[x] })), c.color, (v) => { c.color = v || 'orange'; }, { allowNone: false })),
           system ? note('Catégorie prédéfinie : seuls le nom et la couleur sont modifiables, pour préserver la fiabilité des statistiques.', 'info') : h('div', { class: 'stack' },
             toggle(!!c.tobacco, (on) => { c.tobacco = on; }, 'Contient du tabac (en grammes)'),
             toggle(!!c.cbd, (on) => { c.cbd = on; render(); }, 'Contient du CBD'),

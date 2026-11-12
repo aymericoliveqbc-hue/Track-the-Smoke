@@ -11,6 +11,7 @@ export function h(tag, props, ...children) {
       else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
       else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
       else if (k === 'html') el.innerHTML = v;
+      else if (typeof v === 'string' && v.startsWith('var(') && el instanceof SVGElement) el.style.setProperty(k, v);
       else if (k === 'value' && 'value' in el) el.value = v;
       else if (k === 'checked' || k === 'selected' || k === 'disabled') el[k] = !!v;
       else el.setAttribute(k, v === true ? '' : v);

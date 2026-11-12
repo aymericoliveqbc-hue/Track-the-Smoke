@@ -157,7 +157,7 @@ function progressCard(s, p, subtitle = 'Par rapport à la période précédente'
           h('div', { class: 'cbar' }, h('i', { style: { width: `${(b / max) * 100}%` }, class: 'prev' }), h('span', null, fmt(b))),
           h('div', { class: 'cbar' }, h('i', { style: { width: `${(a / max) * 100}%` } }), h('span', null, fmt(a)))));
     })),
-    h('div', { class: 'legend' }, h('span', { class: 'legend-item' }, h('i', { class: 'prev-swatch' }), 'Précédente'), h('span', { class: 'legend-item' }, h('i', { style: { background: COLORS.violet } }), 'Actuelle')),
+    h('div', { class: 'legend' }, h('span', { class: 'legend-item' }, h('i', { class: 'prev-swatch' }), 'Précédente'), h('span', { class: 'legend-item' }, h('i', { style: { background: COLORS.primary } }), 'Actuelle')),
     h('p', { class: 'hint' }, 'Une hausse n’efface rien : chaque période est une information, pas un jugement.'));
 }
 

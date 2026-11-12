@@ -2,7 +2,7 @@
 // Stratégie « cache d'abord » pour l'application (aucune donnée personnelle
 // n'est mise en cache ici : elles vivent dans IndexedDB).
 
-const VERSION = 'tts-v1.0.0';
+const VERSION = 'tts-v1.1.0';
 const ASSETS = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ const ASSETS = [
   './js/core/dates.js',
   './js/core/db.js',
   './js/core/format.js',
+  './js/core/healthfile.js',
   './js/core/lock.js',
   './js/core/store.js',
   './js/domain/backup.js',
@@ -25,6 +26,7 @@ const ASSETS = [
   './js/domain/cravings.js',
   './js/domain/demo.js',
   './js/domain/goals.js',
+  './js/domain/health.js',
   './js/domain/insights.js',
   './js/domain/models.js',
   './js/domain/simulator.js',
@@ -37,6 +39,7 @@ const ASSETS = [
   './js/ui/entries.js',
   './js/ui/forms.js',
   './js/ui/icons.js',
+  './js/views/applehealth.js',
   './js/views/goals.js',
   './js/views/health.js',
   './js/views/home.js',

@@ -56,7 +56,7 @@ export function nightRow(n) {
     h('span', { class: 'tl-time' }, n.bedTime || '—'),
     h('span', { class: 'tl-dot tone-blue' }, icon('moon', 14)),
     h('span', { class: 'tl-main' },
-      h('span', { class: 'tl-title' }, 'Nuit', isNum(n.quality) ? ` · qualité ${n.quality}/5` : ''),
+      h('span', { class: 'tl-title' }, 'Nuit', isNum(n.quality) ? ` · qualité ${n.quality}/5` : '', n.source === 'apple-health' || n.health ? badge('Santé', 'orange') : null),
       h('span', { class: 'tl-sub' }, [
         c.totalSleepMin != null ? `${formatDuration(c.totalSleepMin)} de sommeil` : null,
         c.latencyMin != null ? `endormissement ${formatDuration(c.latencyMin)}` : null,

@@ -18,13 +18,14 @@ import { buildExport, validateImport, mergeData, entriesToCSV } from '../domain/
 import { CBD_FORMS, ACCESSORY_TYPES, labelOf } from '../domain/models.js';
 import { hashPin, newSalt, biometricAvailable, registerBiometric } from '../core/lock.js';
 import { healthContent } from './health.js';
+import { renderAppleHealth } from './applehealth.js';
 
 const rerender = () => window.dispatchEvent(new Event('tts:render'));
 const back = (title) => h('header', { class: 'view-head' },
   h('a', { class: 'icon-btn', href: '#/profile', 'aria-label': 'Retour' }, icon('back', 20)), h('h1', null, title), h('span', { class: 'spacer' }));
 
 export function renderProfile(sub) {
-  const pages = { products, purchases, stock, categories, notifications, privacy, data, prefs, health, about };
+  const pages = { products, purchases, stock, categories, notifications, privacy, data, prefs, health, about, applehealth: () => renderAppleHealth(back('Apple Santé')) };
   if (sub && pages[sub]) return h('div', { class: 'view' }, pages[sub]());
   const s = state.settings;
   return h('div', { class: 'view' },
@@ -36,6 +37,7 @@ export function renderProfile(sub) {
       listRow({ icon: 'wallet', iconTone: 'orange', title: 'Achats', sub: `${state.purchases.length} achat(s) enregistré(s)`, onclick: () => go('purchases') }),
       listRow({ icon: 'box', iconTone: 'green', title: 'Stocks', sub: s.stock?.enabled ? 'Suivi activé' : 'Facultatif · désactivé', onclick: () => go('stock') }),
       listRow({ icon: 'custom', iconTone: 'blue', title: 'Catégories', sub: `${state.categories.filter((c) => !c.archived).length} catégories`, onclick: () => go('categories') })),
+    card(listRow({ icon: 'heart', iconTone: 'orange', title: 'Apple Santé', sub: s.health?.lastImportAt ? `Sommeil importé le ${formatDayShort(s.health.lastImportAt.slice(0, 10))}` : 'Importer ton sommeil depuis l\u2019iPhone', onclick: () => go('applehealth') })),
     card(
       listRow({ icon: 'bell', title: 'Rappels et notifications', sub: s.notifications.inApp ? 'Rappels discrets activés' : 'Désactivés', onclick: () => go('notifications') }),
       listRow({ icon: 'lock', iconTone: 'green', title: 'Confidentialité et verrouillage', sub: s.privacy.lock === 'none' ? 'Aucun verrouillage' : s.privacy.lock === 'biometric' ? 'Face ID / Touch ID' : 'Code PIN', onclick: () => go('privacy') }),
@@ -333,7 +335,8 @@ function prefs() {
       field('Devise', select([{ id: 'EUR', label: 'Euro (€)' }, { id: 'CHF', label: 'Franc suisse (CHF)' }, { id: 'GBP', label: 'Livre (£)' }, { id: 'USD', label: 'Dollar ($)' }, { id: 'CAD', label: 'Dollar canadien ($ CA)' }], s.currency, (v) => saveSettings({ currency: v || 'EUR' }))),
       field('Méthode de saisie par défaut', segmented([{ id: 'estimated', label: 'Estimation' }, { id: 'weighed', label: 'Pesée' }], s.defaultMethod, (v) => saveSettings({ defaultMethod: v }), { small: true }), 'Tu peux toujours changer de méthode pour chaque saisie.'),
       field('Unités', h('p', { class: 'muted' }, 'Système métrique : grammes au centième (0,01 g), millilitres, gouttes, unités.')),
-      field('Thème', segmented([{ id: 'dark', label: 'Sombre' }, { id: 'oled', label: 'Noir profond' }], s.theme === 'oled' ? 'oled' : 'dark', (v) => { saveSettings({ theme: v }); document.documentElement.dataset.theme = v; }, { small: true }))),
+      field('Apparence', segmented([{ id: 'light', label: 'Sable' }, { id: 'dark', label: 'Forêt' }, { id: 'auto', label: 'Automatique' }], ['light', 'dark', 'auto'].includes(s.theme) ? s.theme : 'light', (v) => saveSettings({ theme: v }), { small: true }),
+        'Sable : clair et chaleureux. Forêt : sombre et doux. Automatique : suit le réglage de l\u2019iPhone.')),
     card(
       field('Date de début du suivi', h('input', { class: 'input', type: 'date', value: s.trackingStart || '', max: dayKey(), onchange: (e) => saveSettings({ trackingStart: e.target.value || null }) }),
         'Les jours antérieurs ne sont jamais comptés comme « zéro consommation ».')));

@@ -17,7 +17,7 @@ for (const [name, size, full] of targets) {
   // Apple et « maskable » : fond plein (iOS applique ses propres arrondis), symbole réduit pour la zone sûre.
   const inner = full ? svg.replace('rx="112"', 'rx="0"').replace('translate(256 256)', 'translate(256 256) scale(.8)') : svg;
   await page.setViewportSize({ width: size, height: size });
-  await page.setContent(`<html><body style="margin:0;background:${full ? '#101116' : 'transparent'}">${inner.replace('<svg ', `<svg width="${size}" height="${size}" `)}</body></html>`);
+  await page.setContent(`<html><body style="margin:0;background:${full ? '#F3EEE4' : 'transparent'}">${inner.replace('<svg ', `<svg width="${size}" height="${size}" `)}</body></html>`);
   await page.screenshot({ path: join(dir, name), omitBackground: !full });
   console.log('✓', name);
 }

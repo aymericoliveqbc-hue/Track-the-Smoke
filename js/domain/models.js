@@ -163,7 +163,8 @@ export function defaultSettings() {
     schema: SCHEMA_VERSION,
     onboarded: false,
     currency: 'EUR',
-    theme: 'dark',
+    theme: 'light', // 'light' (Sable) | 'dark' (Forêt) | 'auto'
+    themeV2: true,
     trackingStart: null,
     defaultProducts: {
       tobacco: 'prd_tobacco', cbd: 'prd_cbd_flower',

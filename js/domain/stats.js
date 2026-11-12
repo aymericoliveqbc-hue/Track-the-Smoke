@@ -18,7 +18,11 @@ export const isCraving = (e) => e.kind === 'craving';
 export function trackingStartOf(state) {
   let min = state.settings?.trackingStart || null;
   for (const e of state.entries || []) { const d = e.at.slice(0, 10); if (!min || d < min) min = d; }
-  for (const n of state.nights || []) { if (!min || n.date < min) min = n.date; }
+  for (const n of state.nights || []) {
+    // Une nuit seulement importée d'Apple Santé ne fait pas commencer le suivi de consommation.
+    if (n.source === 'apple-health' && n.quality == null && !n.note) continue;
+    if (!min || n.date < min) min = n.date;
+  }
   return min;
 }
 

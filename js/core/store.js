@@ -58,6 +58,8 @@ function ensureDefaults() {
     if (!state.categories.find((x) => x.id === c.id)) state.categories.push({ ...c });
   }
   state.settings.schema = SCHEMA_VERSION;
+  // Nouvelle charte naturelle : passage unique au thème clair « Sable ».
+  if (!state.settings.themeV2) { state.settings.theme = 'light'; state.settings.themeV2 = true; }
 }
 
 async function seedDemo() {

@@ -109,13 +109,22 @@ Produit : `kind: tobacco|cbd|accessory`, unité, tarif de référence facultatif
 
 Rappels configurables (journal, nuit, bilan hebdomadaire, objectifs, bilan financier mensuel, sauvegarde) affichés en bandeaux discrets et masquables. Notifications système facultatives via le service worker. **Limite iOS** : sans serveur de push (exclu pour la confidentialité), une PWA ne peut pas programmer de notification locale ; elles sont émises quand l'application est ouverte ou revient au premier plan.
 
-## 7. Graphiques
+## 7. Apple Santé
 
-SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de chaleur, nuage de points, barres de répartition, anneaux. Infobulle au toucher/survol, valeurs manquantes jamais dessinées comme des zéros, légendes systématiques au-delà d'une série. Palette : violet `#A995F5`, vert `#8DD5AF`, bleu `#83A9ED`, orange `#F0B47A` (séparation daltonisme et contraste ≥ 3:1 validés sur le fond `#191C24`).
+Une PWA n'a pas accès à HealthKit (réservé aux apps natives). Deux voies locales, sans serveur :
 
-## 8. Tests
+1. **Export complet** (`Santé › profil › Exporter toutes les données de santé`) : `js/core/healthfile.js` localise `export.xml` dans `export.zip` (zip et zip64), le décompresse en flux (`DecompressionStream('deflate-raw')`) et `HealthXmlScanner` (`js/domain/health.js`) extrait les `HKCategoryTypeIdentifierSleepAnalysis` sans charger le fichier entier.
+2. **Raccourci iOS** : « Rechercher des échantillons de santé » (Analyse du sommeil, 3 derniers jours) → une ligne `début;fin;valeur` par échantillon → presse-papiers → bouton « Importer le presse-papiers ». Dates ISO 8601, `JJ/MM/AAAA HH:mm` ou format français par défaut (« 10 nov. 2026 à 23:14 ») ; valeurs HealthKit, françaises ou anglaises. (« Ouvrir l'URL » ouvrirait Safari, dont le stockage est distinct de l'app installée : d'où le presse-papiers.)
 
-`npm test` — 27 tests unitaires couvrant notamment : analyse des décimales FR, arithmétique de dates (DST, années bissextiles), prix au gramme, historique de prix, coûts complets/incomplets, non-double comptage des accessoires, unités CBD incompatibles, séparation pesé/estimé, absence de zéros fictifs, analyse des joints (n), corrélations, simulateur, référence/paliers/parcours sans remise à zéro, stocks, export/import, CSV, données de démo.
+Conversion (`samplesToNights`) : rattachement à la soirée (avant midi → veille), blocs séparés de plus de 90 min traités comme des sessions distinctes (la sieste est ignorée), intervalles « endormi » fusionnés (doublons iPhone + Watch), latence = début du sommeil − mise au lit, réveils = épisodes « éveillé » (ou interruptions ≥ 5 min). Fusion (`mergeHealthNights`) : seuls les champs vides sont complétés, la qualité/ressenti/bien-être restent manuels, aperçu avant enregistrement. Les nuits seulement importées ne déplacent pas le début du suivi de consommation.
+
+## 8. Graphiques
+
+SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de chaleur, nuage de points, barres de répartition, anneaux. Infobulle au toucher/survol, valeurs manquantes jamais dessinées comme des zéros, légendes systématiques au-delà d'une série. Couleurs pilotées par le thème (variables CSS `--c1…--c4`) : feuille (CBD, envies résistées), ardoise (tabac), terre cuite, bruyère. Clair « Sable » `#3E8A5C #3D72B0 #C4643A #8E6AAE` sur `#FBF8F1`, sombre « Forêt » `#4FA877 #5E92D6 #D9744A #9A7CC2` sur `#1C211B` : bande de luminance, chroma, séparation daltonisme (ΔE ≥ 8) et contraste ≥ 3:1 validés dans les deux modes. Interface : beige sable, vert forêt `#3F6E50`, typographie arrondie (SF Pro Rounded) pour titres et chiffres.
+
+## 9. Tests
+
+`npm test` — 35 tests unitaires couvrant notamment : analyse des décimales FR, arithmétique de dates (DST, années bissextiles), prix au gramme, historique de prix, coûts complets/incomplets, non-double comptage des accessoires, unités CBD incompatibles, séparation pesé/estimé, absence de zéros fictifs, analyse des joints (n), corrélations, import Apple Santé (lecture XML en flux, dates FR, nuits, fusion sans écrasement), simulateur, référence/paliers/parcours sans remise à zéro, stocks, export/import, CSV, données de démo.
 
 `npm run e2e` — rejoue dans Chromium (iPhone 14) les scénarios de validation :
 
@@ -130,6 +139,6 @@ SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de cha
 | 7 | Correction d'une quantité | tabac et dépenses recalculés |
 | 8 | Export → « réinstallation » → import | restauration complète sur un navigateur vierge |
 
-## 9. Mode démonstration
+## 10. Mode démonstration
 
 Accessible au premier lancement ou depuis Profil. Il bascule sur la base `track-the-smoke-demo`, affiche un bandeau orange permanent et n'interagit jamais avec la base personnelle. Les exports de démo sont marqués `demo: true` et signalés à l'import.

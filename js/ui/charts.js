@@ -5,8 +5,9 @@
 import { h } from './dom.js';
 
 export const COLORS = {
-  violet: '#A995F5', green: '#8DD5AF', blue: '#83A9ED', orange: '#F0B47A',
-  grid: 'rgba(255,255,255,0.06)', axis: '#9299A8', surface: '#191C24', muted: '#3A3F4C',
+  // Couleurs pilotées par le thème (variables CSS, validées clair et sombre).
+  primary: 'var(--c1)', green: 'var(--c1)', blue: 'var(--c2)', orange: 'var(--c3)', violet: 'var(--c4)',
+  grid: 'var(--grid)', axis: 'var(--text-3)', surface: 'var(--card)', muted: 'var(--surface-2)',
 };
 
 const W = 340;
@@ -91,7 +92,7 @@ export function barChart(data, opts = {}) {
       return;
     }
     const bh = (d.value / max) * innerH;
-    const p = h('path', { d: roundedTopBar(x, padT + innerH - bh, w, Math.max(bh, d.value > 0 ? 2 : 0)), fill: d.color || opts.color || COLORS.violet, class: 'mark', opacity: opts.highlight != null && opts.highlight !== i ? 0.55 : 1 });
+    const p = h('path', { d: roundedTopBar(x, padT + innerH - bh, w, Math.max(bh, d.value > 0 ? 2 : 0)), fill: d.color || opts.color || COLORS.primary, class: 'mark', opacity: opts.highlight != null && opts.highlight !== i ? 0.55 : 1 });
     marks.push(p);
     svg.append(p);
   });
@@ -228,7 +229,7 @@ export function heatmap(grid, rowLabels, opts = {}) {
   grid.forEach((row, r) => {
     svg.append(h('text', { x: padL - 6, y: padT + r * ch + ch / 2 + 3, 'text-anchor': 'end', class: 'axis' }, rowLabels[r]));
     row.forEach((v, c) => {
-      const cell = h('rect', { x: padL + c * cw + 1, y: padT + r * ch + 1, width: cw - 2, height: ch - 2, rx: 2.5, fill: v ? opts.color || COLORS.violet : 'rgba(255,255,255,0.035)', 'fill-opacity': v ? 0.18 + 0.82 * (v / max) : 1, class: 'mark' });
+      const cell = h('rect', { x: padL + c * cw + 1, y: padT + r * ch + 1, width: cw - 2, height: ch - 2, rx: 2.5, fill: v ? opts.color || COLORS.primary : 'var(--surface)', 'fill-opacity': v ? 0.18 + 0.82 * (v / max) : 1, class: 'mark' });
       cells.push({ cell, r, c, v });
       svg.append(cell);
     });
@@ -299,7 +300,7 @@ export function splitBar(parts, fmt) {
 }
 
 /** Mini-courbe pour les tuiles. */
-export function sparkline(values, color = COLORS.violet) {
+export function sparkline(values, color = COLORS.primary) {
   const w = 80, hgt = 26;
   const v = values.map((x) => (x == null ? null : x));
   const nums = v.filter((x) => x != null);
@@ -315,12 +316,12 @@ export function sparkline(values, color = COLORS.violet) {
 }
 
 /** Anneau de progression. */
-export function ring(progress, size = 64, color = COLORS.violet, label = '') {
+export function ring(progress, size = 64, color = COLORS.primary, label = '') {
   const r = (size - 8) / 2; const c = 2 * Math.PI * r;
   const p = Math.max(0, Math.min(1, progress ?? 0));
   return h('div', { class: 'ring', style: { width: `${size}px`, height: `${size}px` } },
     h('svg', { viewBox: `0 0 ${size} ${size}`, width: size, height: size },
-      h('circle', { cx: size / 2, cy: size / 2, r, stroke: 'rgba(255,255,255,0.08)', 'stroke-width': 5, fill: 'none' }),
+      h('circle', { cx: size / 2, cy: size / 2, r, stroke: 'var(--surface-2)', 'stroke-width': 5, fill: 'none' }),
       h('circle', { cx: size / 2, cy: size / 2, r, stroke: color, 'stroke-width': 5, fill: 'none', 'stroke-linecap': 'round', 'stroke-dasharray': `${c * p} ${c}`, transform: `rotate(-90 ${size / 2} ${size / 2})` })),
     h('span', { class: 'ring-label' }, label));
 }

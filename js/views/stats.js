@@ -272,7 +272,7 @@ function joints() {
     hist(ja.tobaccoValues, COLORS.blue, 'Répartition — tabac par joint'),
     hist(ja.cbdValues, COLORS.green, 'Répartition — CBD par joint'),
     share.length ? card(cardHead('Part de CBD dans les joints'), lineChart([{ label: 'Part de CBD', color: COLORS.green, points: share }], { format: (v) => `${Math.round(v)} %`, max: 100, aria: 'Part de CBD' })) : null,
-    card(cardHead('Heures des joints'), hourBars(ja.hours, COLORS.violet)),
+    card(cardHead('Heures des joints'), hourBars(ja.hours, COLORS.primary)),
     h('p', { class: 'hint' }, 'Les moyennes n’utilisent que les joints dont la quantité est connue (n = nombre d’observations).'));
 }
 
@@ -298,11 +298,11 @@ function time() {
     weeks.push({ label: formatDayShort(start).replace(/\.$/, ''), tip: `${formatDayShort(start)} – ${formatDayShort(end)}`, value: s.coverage ? s.counts.total : null });
   }
   return h('div', { class: 'stack' },
-    card(cardHead('Par heure', badge(`${cons.length} consommations`)), hourBars(byHour(cons), COLORS.violet)),
+    card(cardHead('Par heure', badge(`${cons.length} consommations`)), hourBars(byHour(cons), COLORS.primary)),
     card(cardHead('Par jour de la semaine', badge('moyenne')), barChart(wd.map((v, i) => ({ label: WEEKDAYS_SHORT[i], value: v })), { color: COLORS.blue, format: (v) => fmtNum(v, 1), aria: 'Moyenne par jour de semaine' })),
     card(cardHead('Par période de la journée'), splitBar(DAY_PARTS.map((p, i) => ({ label: `${p.label} (${p.range})`, value: parts[p.id], color: [COLORS.green, COLORS.blue, COLORS.violet, COLORS.orange][i] })), (v) => fmtNum(v, 0))),
     card(cardHead('Carte jour × heure'), heatmap(heatGrid(cons), WEEKDAYS_SHORT, { unit: 'consommation(s)' })),
-    card(cardHead('Semaine après semaine'), barChart(weeks, { color: COLORS.violet, format: (v) => fmtNum(v, 0), highlight: weeks.length - 1, xLabelEvery: 2, aria: 'Consommations par semaine' })),
+    card(cardHead('Semaine après semaine'), barChart(weeks, { color: COLORS.primary, format: (v) => fmtNum(v, 0), highlight: weeks.length - 1, xLabelEvery: 2, aria: 'Consommations par semaine' })),
     card(cardHead('Mois après mois'), monthCompare(6)));
 }
 
@@ -357,7 +357,8 @@ function sleep() {
   const range = currentRange();
   const st = sleepStats(state.nights, range);
   if (!state.nights.length) {
-    return card(emptyState({ icon: 'moon', title: 'Aucune nuit enregistrée', text: 'Note tes nuits pour comparer sommeil, envies et consommation.', action: h('button', { class: 'btn btn-primary', onclick: () => openNightForm() }, 'Noter ma nuit') }));
+    return card(emptyState({ icon: 'moon', title: 'Aucune nuit enregistrée', text: 'Note tes nuits ou importe-les depuis Apple Santé pour comparer sommeil, envies et consommation.',
+      action: h('div', { class: 'row-actions' }, h('button', { class: 'btn btn-primary', onclick: () => openNightForm() }, 'Noter ma nuit'), h('a', { class: 'btn btn-ghost', href: '#/profile/applehealth' }, icon('heart', 16), 'Apple Santé')) }));
   }
   const nights = state.nights.filter((n) => n.date >= range.start && n.date <= range.end).sort((a, b) => (a.date < b.date ? -1 : 1));
   const pts = (fn) => nights.map((n) => ({ label: `${Number(n.date.slice(8))}/${Number(n.date.slice(5, 7))}`, tip: `Nuit du ${formatDayShort(n.date)}`, value: fn(n) }));
@@ -367,6 +368,7 @@ function sleep() {
   const concern = sleepConcern(state.nights, today);
   return h('div', { class: 'stack' },
     concern ? note(concern, 'warn') : null,
+    h('a', { class: 'banner banner-soft ah-link', href: '#/profile/applehealth' }, icon('heart', 18), h('div', null, h('b', null, 'Apple Santé'), h('span', null, 'Importer les nuits mesurées par l\u2019iPhone ou la Watch')), icon('chevron', 16)),
     h('div', { class: 'tiles' },
       statTile({ label: 'Nuits notées', value: `${st.count}`, sub: `sur ${st.days} jours` }),
       statTile({ label: 'Qualité moyenne', value: st.quality.value != null ? `${fmtNum(st.quality.value, 1)} / 5` : '—' }),
@@ -376,7 +378,7 @@ function sleep() {
       statTile({ label: 'Énergie moyenne', value: st.energy.value != null ? `${fmtNum(st.energy.value, 1)} / 5` : '—' })),
     nights.length ? card(cardHead('Temps d’endormissement'), lineChart([{ label: 'Endormissement', color: COLORS.blue, points: pts((n) => computeNight(n).latencyMin) }], { format: (v) => `${Math.round(v)}′`, aria: 'Temps d’endormissement' })) : null,
     nights.length ? card(cardHead('Qualité et durée'), lineChart([
-      { label: 'Qualité (1–5)', color: COLORS.violet, points: pts((n) => n.quality) },
+      { label: 'Qualité (1–5)', color: COLORS.primary, points: pts((n) => n.quality) },
     ], { min: 0, max: 5, format: (v) => fmtNum(v, 1), aria: 'Qualité du sommeil' }),
     lineChart([{ label: 'Durée (h)', color: COLORS.green, points: pts((n) => { const c = computeNight(n).totalSleepMin; return c != null ? c / 60 : null; }) }], { min: 0, format: (v) => `${fmtNum(v, 1)} h`, aria: 'Durée de sommeil' })) : null,
     card(cardHead('Comparer'),
@@ -393,7 +395,7 @@ function sleep() {
 function nightCalendar(today) {
   const start = startOfWeek(addDays(today, -34));
   const days = []; for (let d = start; d <= today; d = addDays(d, 1)) days.push(d);
-  const colors = ['', '#5b4a8c', '#7462b0', '#8c7bd2', '#A995F5', '#c6b9fa'];
+  const colors = ['', 'color-mix(in srgb, var(--c1) 22%, var(--surface))', 'color-mix(in srgb, var(--c1) 40%, var(--surface))', 'color-mix(in srgb, var(--c1) 58%, var(--surface))', 'color-mix(in srgb, var(--c1) 78%, var(--surface))', 'var(--c1)'];
   return h('div', null,
     h('div', { class: 'cal-grid cal-grid-sm' },
       WEEKDAYS_SHORT.map((w) => h('span', { class: 'cal-wd' }, w[0])),
@@ -401,7 +403,7 @@ function nightCalendar(today) {
         const n = state.nights.find((x) => x.date === d);
         const c = n ? computeNight(n) : null;
         return h('button', {
-          class: `cal-day ${n ? '' : 'untracked'}`, style: n?.quality ? { background: colors[n.quality], color: n.quality >= 4 ? '#101116' : '#F4F5F8' } : null,
+          class: `cal-day ${n ? '' : 'untracked'}`, style: n?.quality ? { background: colors[n.quality], color: n.quality >= 4 ? 'var(--on-primary)' : 'var(--text)' } : null,
           title: n ? `Nuit du ${formatDayShort(d)} · ${n.quality ?? '?'}/5 · ${c.totalSleepMin != null ? formatDuration(c.totalSleepMin) : '—'}${n.note ? ' · ' + n.note : ''}` : `Nuit du ${formatDayShort(d)} non notée`,
           onclick: () => openNightForm({ date: d }),
         }, h('span', { class: 'cal-num' }, String(Number(d.slice(8)))), n && c.latencyMin != null ? h('span', { class: 'cal-val' }, `${Math.round(c.latencyMin)}′`) : null);
@@ -438,7 +440,7 @@ function finance() {
       statTile({ label: 'Cette année', value: fmtMoney(per('y')) }),
       statTile({ label: 'Journée moyenne', value: fmtMoney(s.cost.total / d), sub: `sur ${d} j` }),
       statTile({ label: 'Projection annuelle', value: fmtMoney((s.cost.total / d) * 365), sub: 'au rythme de la période' })),
-    card(cardHead('Dépenses par jour'), barChart(chartSeries(series, 'sum'), { color: COLORS.violet, format: (v) => fmtNum(v, v < 10 ? 1 : 0), aria: 'Dépenses par jour' })),
+    card(cardHead('Dépenses par jour'), barChart(chartSeries(series, 'sum'), { color: COLORS.primary, format: (v) => fmtNum(v, v < 10 ? 1 : 0), aria: 'Dépenses par jour' })),
     card(cardHead('Répartition'), splitBar([
       { label: 'Tabac', value: s.cost.tobacco, color: COLORS.blue }, { label: 'CBD', value: s.cost.cbd, color: COLORS.green }, { label: 'Accessoires', value: s.cost.accessories, color: COLORS.violet },
     ], fmtMoney)),
@@ -482,7 +484,7 @@ function simulator() {
       h('div', { class: 'table-wrap' }, h('table', { class: 'table' },
         h('thead', null, h('tr', null, h('th', null, 'Horizon'), h('th', null, 'Économie'), h('th', null, 'Dépense restante'))),
         h('tbody', null, proj.map((p) => h('tr', null, h('td', null, p.label), h('td', { class: 'pos' }, fmtMoney(p.amount)), h('td', null, fmtMoney(p.spend)))))))),
-    card(cardHead('Tous les scénarios sur 1 an'), barChart(sc.map((x) => ({ label: x.id === 'current' ? 'Actuel' : x.id.startsWith('r') ? `−${x.id.slice(1)} %` : x.id === 'noTobacco' ? 'Sans tabac' : x.id === 'noCbd' ? 'Sans CBD' : 'Arrêt', tip: x.label, value: x.remaining * 365 })), { color: COLORS.violet, format: (v) => fmtNum(v, 0), xLabelEvery: 1, aria: 'Dépense annuelle par scénario' }),
+    card(cardHead('Tous les scénarios sur 1 an'), barChart(sc.map((x) => ({ label: x.id === 'current' ? 'Actuel' : x.id.startsWith('r') ? `−${x.id.slice(1)} %` : x.id === 'noTobacco' ? 'Sans tabac' : x.id === 'noCbd' ? 'Sans CBD' : 'Arrêt', tip: x.label, value: x.remaining * 365 })), { color: COLORS.primary, format: (v) => fmtNum(v, 0), xLabelEvery: 1, aria: 'Dépense annuelle par scénario' }),
       h('p', { class: 'hint' }, 'Dépense annuelle restante dans chaque scénario.')));
 }
 

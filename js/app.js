@@ -40,6 +40,7 @@ function render() {
     return;
   }
   document.body.classList.remove('onboarding-mode');
+  applyTheme();
   const { view, sub } = parseRoute();
   const route = `${view}/${sub || ''}`;
   const keepScroll = route === lastRoute;
@@ -59,8 +60,17 @@ function render() {
   document.getElementById('demo-ribbon').hidden = !isDemo();
 }
 
+const darkQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+export function applyTheme() {
+  const t = state.settings.theme;
+  const mode = t === 'dark' || (t === 'auto' && darkQuery?.matches) ? 'dark' : 'light';
+  document.documentElement.dataset.theme = mode;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#151913' : '#F3EEE4');
+}
+darkQuery?.addEventListener?.('change', () => applyTheme());
+
 function buildShell() {
-  document.documentElement.dataset.theme = state.settings.theme === 'oled' ? 'oled' : 'dark';
+  applyTheme();
   const tabbar = $('#tabbar');
   clear(tabbar).append(...NAV.map(tab));
   document.querySelector('.fab')?.remove();

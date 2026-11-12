@@ -26,7 +26,7 @@ export function renderGoals() {
   const obs = observationStatus(s, today);
   if (obs) {
     root.append(card(cardHead('Phase d’observation', obs.done ? badge('terminée', 'green') : badge(`jour ${obs.elapsed}/${obs.days}`, 'violet')),
-      h('div', { class: 'obs' }, ring(obs.elapsed / obs.days, 64, COLORS.violet, `${obs.elapsed}/${obs.days}`),
+      h('div', { class: 'obs' }, ring(obs.elapsed / obs.days, 64, COLORS.primary, `${obs.elapsed}/${obs.days}`),
         h('div', null,
           h('p', null, obs.done ? 'Ta période d’observation est terminée. Ta référence personnelle a été établie à partir de ces jours.' : 'Enregistre simplement tes consommations, envies, dépenses et nuits. Ta référence sera calculée à la fin.'),
           h('p', { class: 'muted small' }, `Du ${formatDayShort(obs.start)} au ${formatDayShort(obs.end)}`))),
@@ -184,7 +184,7 @@ function goalCard(g, ctx) {
   const status = ev.reached == null ? badge('données insuffisantes', 'muted') : ev.reached ? badge('atteint cette semaine', 'green') : badge('en cours', 'violet');
   return h('section', { class: `card goal ${g.active ? '' : 'inactive'}` },
     h('button', { class: 'goal-head', 'aria-label': `Modifier l'objectif ${m.label}`, onclick: () => openGoalForm({ goal: g }) },
-      ring(ev.progress ?? (ev.reached ? 1 : 0), 52, ev.reached ? COLORS.green : COLORS.violet, ev.progress != null ? `${Math.round(ev.progress * 100)}%` : ''),
+      ring(ev.progress ?? (ev.reached ? 1 : 0), 52, ev.reached ? COLORS.primary : COLORS.blue, ev.progress != null ? `${Math.round(ev.progress * 100)}%` : ''),
       h('div', { class: 'grow' },
         h('h3', null, m.label, !g.active ? ' (en pause)' : ''),
         h('p', { class: 'muted small' }, `${m.dir === 'down' ? 'Au plus' : 'Au moins'} ${fmt(ev.target)}${nextStep ? ` · prochain palier ${fmt(nextStep.target)} le ${formatDayShort(nextStep.date)}` : ''}`), status),
@@ -193,7 +193,7 @@ function goalCard(g, ctx) {
       h('div', null, h('span', { class: 'muted small' }, '7 derniers jours'), h('b', null, fmt(ev.current.value))),
       h('div', null, h('span', { class: 'muted small' }, 'Référence'), h('b', null, fmt(ev.baseline))),
       h('div', null, h('span', { class: 'muted small' }, 'Cible'), h('b', null, fmt(ev.target)))),
-    weeks.some((w) => isNum(w.value)) && !m.time ? lineChart([{ label: m.label, color: COLORS.violet, points: weeks }], { target: ev.target, height: 110, format: (v) => (m.pct ? `${Math.round(v * 100)}%` : fmtNum(v, g.metric === 'spend' ? 0 : 1)), aria: `Évolution de l'objectif ${m.label}` }) : null,
+    weeks.some((w) => isNum(w.value)) && !m.time ? lineChart([{ label: m.label, color: COLORS.primary, points: weeks }], { target: ev.target, height: 110, format: (v) => (m.pct ? `${Math.round(v * 100)}%` : fmtNum(v, g.metric === 'spend' ? 0 : 1)), aria: `Évolution de l'objectif ${m.label}` }) : null,
     g.note ? h('p', { class: 'goal-note' }, `« ${g.note} »`) : null,
     g.revisions?.length ? h('p', { class: 'hint' }, `Modifié ${g.revisions.length} fois · historique conservé`) : null);
 }

@@ -149,11 +149,11 @@ function calendarView() {
       const x = valueOf(v);
       const intensity = x != null && max ? x / max : 0;
       const future = d > today;
-      const color = ui.metric === 'resisted' || ui.metric === 'sleep' ? '141,213,175' : '169,149,245';
+      const color = ui.metric === 'tobacco' ? 'var(--c2)' : ui.metric === 'cost' ? 'var(--c3)' : 'var(--c1)';
       return h('button', {
         class: `cal-day ${d === today ? 'today' : ''} ${future ? 'future' : ''} ${!v.tracked ? 'untracked' : ''}`,
         disabled: future,
-        style: x ? { background: `rgba(${color},${0.12 + 0.55 * intensity})` } : null,
+        style: x ? { background: `color-mix(in srgb, ${color} ${Math.round(14 + 56 * intensity)}%, var(--surface))` } : null,
         onclick: () => openDay(d),
         'aria-label': `${formatDayLong(d)} ${label(v)}`,
       },

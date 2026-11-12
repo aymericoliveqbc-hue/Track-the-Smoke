@@ -2,7 +2,7 @@
 
 **Know your habits. Take back control.**
 
-Application mobile personnelle (PWA installable sur iPhone, 100 % hors ligne) pour **comprendre, quantifier, réduire puis arrêter** la consommation de tabac et de CBD : consommations, envies (résistées ou non), achats et budget, stocks, sommeil et bien-être, objectifs progressifs.
+Application mobile personnelle (PWA installable sur iPhone, 100 % hors ligne, thème clair « Sable » ou sombre « Forêt ») pour **comprendre, quantifier, réduire puis arrêter** la consommation de tabac et de CBD : consommations, envies (résistées ou non), achats et budget, stocks, sommeil et bien-être, objectifs progressifs.
 
 - Aucun compte, aucun serveur, aucune publicité, aucun traceur : les données restent sur l'appareil (IndexedDB).
 - Jamais de culpabilisation : une consommation n'efface jamais les progrès, aucun compteur n'est remis à zéro.
@@ -35,6 +35,7 @@ Aucune étape de build : le dossier peut être publié tel quel sur n'importe qu
 | **Envies** | Intensité 0–10, produit, déclencheur, durée, situation, émotion ; issue résistée ou suivie d'une consommation (liée). |
 | **Statistiques** | Synthèse, Tabac, CBD, Joints (moyennes avec nombre d'observations, histogrammes, part de CBD), Temps (heure, jour, période, carte de chaleur, semaines, mois), Envies, Sommeil (corrélations prudentes, calendrier des nuits), Finances, Simulateur, Habitudes. Filtre pesé / estimé. |
 | **Objectifs** | Période d'observation 7–14 j, référence personnelle, objectifs (tabac, CBD, joints, roulées, budget, envies résistées, heure de première consommation) avec paliers libres et historique des révisions ; parcours **Arrêt du tabac** et **Arrêt du CBD** indépendants (jours sans, quantités et dépenses évitées). |
+| **Apple Santé** | Import du sommeil mesuré par l'iPhone / l'Apple Watch : export complet de l'app Santé (`export.zip`) ou Raccourci iOS + presse-papiers pour l'import quotidien. Les saisies manuelles ne sont jamais écrasées. |
 | **Profil** | Produits et prix, achats, accessoires, stocks, catégories, rappels, verrouillage (PIN / Face ID), export JSON / CSV, import (remplacer / fusionner), instantanés locaux, suppression définitive, mode démo séparé, informations santé. |
 
 ## Documentation technique
