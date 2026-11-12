@@ -119,6 +119,14 @@ Rappels configurables (journal, nuit, bilan hebdomadaire, objectifs, bilan finan
 - **Recalcul rétroactif** à chaque enregistrement d'entrée, de paquet ou de valeurs de départ (`store.recalibrate`) : coûts, statistiques et stocks suivent.
 - **Précision** affichée : générique → ajustée sur 1 repère → n repères → précise (≥ 4).
 
+## 7 bis. Molécules et projets d'épargne
+
+**Molécules** (`models.MOLECULES`) : `cbd.molecule` sur chaque entrée (+ `moleculeOther` en texte libre), valeur par défaut issue du produit, puis de `settings.defaultMolecule`, mémorisée dans les dernières valeurs pour l'enregistrement en un geste. Répartition par molécule dans Progrès › Conso, colonne `molecule` dans l'export CSV. Les cannabinoïdes hémisynthétiques sont signalés comme distincts du CBD (information neutre, sans conseil médical).
+
+**Projets** (`js/domain/projects.js`, stockés dans `goals` avec `kind: 'project'`) : budget = Σ postes × (1 + marge) ; référence = dépense quotidienne figée à la création (référence personnelle ou moyenne 30 j ; jamais figée à 0 si les prix sont inconnus) ; économisé = max(0, référence × jours − dépenses réelles) + versements déclarés ; projections au rythme actuel (référence − dépense des 14 derniers jours) et pour −25 / −50 / −100 % ; pour une date visée, réduction nécessaire ou complément mensuel à épargner.
+
+**Assistant IA** (`js/core/ai.js`) : facultatif. Requête HTTP directe (application sans dépendance ni build) vers `POST https://api.anthropic.com/v1/messages` avec la clé de l'utilisateur (`localStorage`, exclue des sauvegardes), en-têtes `anthropic-version: 2026-10-21` et `anthropic-dangerous-direct-browser-access: true`, modèle `claude-opus-5-5`, `output_config.effort: "low"`, sortie JSON contrainte par `output_config.format` (`json_schema`), repli automatique en cas de refus (`server-side-fallback-2026-07-01`, `fallbacks: "default"`), contrôle de `stop_reason`. Seuls le type, le nom et la description du projet sont envoyés. CSP : `connect-src 'self' https://api.anthropic.com`.
+
 ## 8. Apple Santé
 
 Une PWA n'a pas accès à HealthKit (réservé aux apps natives). Deux voies locales, sans serveur :
@@ -134,7 +142,7 @@ SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de cha
 
 ## 10. Tests
 
-`npm test` — 42 tests unitaires couvrant notamment : analyse des décimales FR, arithmétique de dates (DST, années bissextiles), prix au gramme, historique de prix, coûts complets/incomplets, non-double comptage des accessoires, unités CBD incompatibles, séparation pesé/estimé, absence de zéros fictifs, analyse des joints (n), corrélations, import Apple Santé (lecture XML en flux, dates FR, nuits, fusion sans écrasement), quantités automatiques (paquet terminé = somme exacte, paquet entamé, repères, saisies manuelles déduites, repère incohérent ignoré), simulateur, référence/paliers/parcours sans remise à zéro, stocks, export/import, CSV, données de démo.
+`npm test` — 46 tests unitaires couvrant notamment : analyse des décimales FR, arithmétique de dates (DST, années bissextiles), prix au gramme, historique de prix, coûts complets/incomplets, non-double comptage des accessoires, unités CBD incompatibles, séparation pesé/estimé, absence de zéros fictifs, analyse des joints (n), corrélations, import Apple Santé (lecture XML en flux, dates FR, nuits, fusion sans écrasement), quantités automatiques (paquet terminé = somme exacte, paquet entamé, repères, saisies manuelles déduites, repère incohérent ignoré), simulateur, référence/paliers/parcours sans remise à zéro, stocks, export/import, CSV, données de démo.
 
 `npm run e2e` — rejoue dans Chromium (iPhone 14) les scénarios de validation :
 
@@ -148,6 +156,7 @@ SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de cha
 | 6 | Réduction de 25 % | test unitaire sur historique + Simulateur |
 | 7 | Correction d'une quantité | tabac et dépenses recalculés |
 | 8 | Export → « réinstallation » → import | restauration complète sur un navigateur vierge |
+| 10–12 | iPhone : aucun bouton dans un `<label>` ; molécule 10-OH mémorisée ; projet « Partir au Canada » avec estimation IA (API simulée) | requête conforme, aucune donnée de consommation envoyée, budget + 10 % repris |
 | 9 | Sans balance : tabac ½ de 30 g et CBD ¾ de 5 g entamés, 6 joints, repère « il reste 1 g » | joints remplis automatiquement (0,20 g), puis CBD recalculé rétroactivement (≈ 2,75 g) |
 
 ## 11. Mode démonstration

@@ -8,7 +8,8 @@ import { openNightForm, openCravingForm } from '../ui/forms.js';
 import { state, derived } from '../core/store.js';
 import { addDays, formatDayShort, formatDuration, DAY_PARTS, startOfWeek } from '../core/dates.js';
 import { fmtGrams, fmtMoney, fmtNum, isNum } from '../core/format.js';
-import { summarize, dailySeries, measures, costMeasure, entriesIn, isConsumption, byDayPart, groupSeries } from '../domain/stats.js';
+import { summarize, dailySeries, measures, costMeasure, entriesIn, isConsumption, byDayPart, groupSeries, byMolecule } from '../domain/stats.js';
+import { moleculeLabel } from '../domain/models.js';
 import { cravingStats, cravingSeries } from '../domain/cravings.js';
 import { sleepStats, computeNight, sleepPairs, pearson, describeCorrelation, sleepConcern } from '../domain/sleep.js';
 import { dailyCostProfile, scenarios } from '../domain/simulator.js';
@@ -80,6 +81,7 @@ function conso() {
   const cons = entriesIn(state.entries, s.coverage).filter(isConsumption);
   const parts = byDayPart(cons);
   const ins = generateInsights(state, ctx).slice(0, 3);
+  const mols = byMolecule(state.entries, r, ctx, moleculeLabel);
   return h('div', { class: 'stack' },
     card(
       h('div', { class: 'big-row' },
@@ -90,6 +92,7 @@ function conso() {
         big(fmtGrams(s.tobacco.total / d), 'tabac / jour'),
         big(fmtGrams(s.cbd.total / d), 'CBD / jour'))),
     card(head('Grammes par jour'), stackedBars(gram, [{ label: 'Tabac', color: COLORS.blue }, { label: 'CBD', color: COLORS.green }], { format: (v) => fmtNum(v, 1), height: 150, aria: 'Grammes de tabac et de CBD' })),
+    mols.length > 1 || (mols.length === 1 && mols[0][0] !== 'CBD') ? card(head('Par molécule'), splitBar(mols.slice(0, 4).map(([k, v], i) => ({ label: k, value: v, color: [COLORS.green, COLORS.violet, COLORS.orange, COLORS.blue][i] })), fmtGrams)) : null,
     cons.length ? card(head('Tes moments'), splitBar(DAY_PARTS.map((p, i) => ({ label: p.label, value: parts[p.id], color: [COLORS.green, COLORS.blue, COLORS.violet, COLORS.orange][i] })), (v) => fmtNum(v, 0))) : null,
     ins.length ? card(head('À retenir'), h('div', { class: 'insights' }, ins.map((i) => h('div', { class: `insight insight-${i.tone}` }, icon(i.tone === 'positive' ? 'sparkle' : 'info', 16), h('p', null, i.text))))) : null);
 }

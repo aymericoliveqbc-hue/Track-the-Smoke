@@ -37,7 +37,7 @@ function computeReminders(n) {
   if (n.monthly?.on && Number(today.slice(8, 10)) <= 3 && state.entries.length) {
     out.push({ id: `monthly-${today.slice(0, 7)}`, icon: 'wallet', title: 'Bilan financier du mois', text: 'Découvre tes dépenses du mois écoulé.', action: () => { location.hash = '#/stats/finance'; } });
   }
-  if (n.goals?.on && state.goals.some((g) => g.active) && m >= (hm(n.goals.time) ?? 720)) {
+  if (n.goals?.on && state.goals.some((g) => g.active && g.kind !== 'project') && m >= (hm(n.goals.time) ?? 720)) {
     out.push({ id: `goals-${today}`, icon: 'goals', title: 'Tes objectifs', text: 'Un coup d’œil à ta progression ?', action: () => { location.hash = '#/goals'; } });
   }
   const last = state.settings.lastExportAt?.slice(0, 10);

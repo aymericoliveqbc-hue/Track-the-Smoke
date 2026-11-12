@@ -2,7 +2,7 @@
 // Stratégie « réseau d'abord, cache en secours » pour l'application (aucune donnée personnelle
 // n'est mise en cache ici : elles vivent dans IndexedDB).
 
-const VERSION = 'tts-v2.0.0';
+const VERSION = 'tts-v2.1.0';
 const ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const ASSETS = [
   './assets/icons/apple-touch-icon.png',
   './js/app.js',
   './js/app-reminders.js',
+  './js/core/ai.js',
   './js/core/dates.js',
   './js/core/db.js',
   './js/core/format.js',
@@ -30,6 +31,7 @@ const ASSETS = [
   './js/domain/health.js',
   './js/domain/insights.js',
   './js/domain/models.js',
+  './js/domain/projects.js',
   './js/domain/simulator.js',
   './js/domain/sleep.js',
   './js/domain/stats.js',
@@ -48,6 +50,7 @@ const ASSETS = [
   './js/views/onboarding.js',
   './js/views/packs.js',
   './js/views/progress.js',
+  './js/views/projects.js',
   './js/views/profile.js',
   './js/views/stats.js',
 ];

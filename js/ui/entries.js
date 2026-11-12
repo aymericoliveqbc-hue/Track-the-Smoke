@@ -6,7 +6,7 @@ import { badge } from './components.js';
 import { state, derived, catById } from '../core/store.js';
 import { fmtGrams, fmtMoney, fmtQty, isNum } from '../core/format.js';
 import { formatDuration } from '../core/dates.js';
-import { TRIGGERS, CRAVING_PRODUCTS, labelOf, CONTEXTS } from '../domain/models.js';
+import { TRIGGERS, CRAVING_PRODUCTS, labelOf, CONTEXTS, moleculeLabel } from '../domain/models.js';
 import { computeNight } from '../domain/sleep.js';
 import { openEntryForm, openCravingForm, openNightForm } from './forms.js';
 
@@ -38,7 +38,7 @@ export function entryRow(e, { showDate = false } = {}) {
   const c = cost(e);
   const parts = [];
   if (e.tobacco) parts.push(h('span', null, `Tabac ${isNum(e.tobacco.grams) ? fmtGrams(e.tobacco.grams) : '?'}`, methodBadge(e.tobacco.method)));
-  if (e.cbd) parts.push(h('span', null, `CBD ${isNum(e.cbd.amount) ? fmtQty(e.cbd.amount, e.cbd.unit) : '?'}`, e.tobacco?.method !== e.cbd.method || !e.tobacco ? methodBadge(e.cbd.method) : null));
+  if (e.cbd) parts.push(h('span', null, `${moleculeLabel(e.cbd)} ${isNum(e.cbd.amount) ? fmtQty(e.cbd.amount, e.cbd.unit) : '?'}`, e.tobacco?.method !== e.cbd.method || !e.tobacco ? methodBadge(e.cbd.method) : null));
   if (e.quantity && isNum(e.quantity.amount)) parts.push(h('span', null, `${fmtQty(e.quantity.amount, e.quantity.unit)}`));
   if (e.context) parts.push(h('span', null, labelOf(CONTEXTS, e.context)));
   return h('button', { class: 'tl-item', onclick: () => openEntryForm({ entry: e }) },

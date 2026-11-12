@@ -94,7 +94,11 @@ export function confirmDialog({ title, message, confirm = 'Confirmer', danger = 
 /* ----------------------------- Champs ----------------------------- */
 
 export function field(label, control, hint) {
-  return h('label', { class: 'field' },
+  // Sur iPhone (WebKit), un toucher sur un bouton placé dans un <label> est
+  // renvoyé au PREMIER bouton du label : seuls les champs simples utilisent
+  // donc un <label> ; les groupes de boutons utilisent un <div>.
+  const simple = control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement;
+  return h(simple ? 'label' : 'div', { class: 'field' },
     label ? h('span', { class: 'field-label' }, label) : null,
     control,
     hint ? h('span', { class: 'field-hint' }, hint) : null);

@@ -52,6 +52,28 @@ export const CBD_FORMS = [
   { id: 'other', label: 'Autre produit', unit: 'unit' },
 ];
 
+/**
+ * Molécule réellement consommée dans le « CBD ». Les cannabinoïdes
+ * hémisynthétiques (HHC, 10-OH-HHC, Δ10…) ne sont PAS du CBD : ils sont
+ * suivis séparément et jamais assimilés au CBD ni au THC.
+ */
+export const MOLECULES = [
+  { id: 'cbd', label: 'CBD', short: 'CBD', synthetic: false },
+  { id: '10oh', label: '10-OH-HHC', short: '10-OH', synthetic: true },
+  { id: 'hhc', label: 'HHC', short: 'HHC', synthetic: true },
+  { id: 'hhcp', label: 'HHC-P', short: 'HHC-P', synthetic: true },
+  { id: 'd10', label: 'Δ10-THC (D10)', short: 'D10', synthetic: true },
+  { id: 'd8', label: 'Δ8-THC (D8)', short: 'D8', synthetic: true },
+  { id: 'h4cbd', label: 'H4-CBD', short: 'H4-CBD', synthetic: true },
+  { id: 'thcp', label: 'THC-P', short: 'THC-P', synthetic: true },
+  { id: 'cbn', label: 'CBN', short: 'CBN', synthetic: false },
+  { id: 'cbg', label: 'CBG', short: 'CBG', synthetic: false },
+  { id: 'other', label: 'Autre', short: 'Autre', synthetic: true },
+];
+export const moleculeOf = (id) => MOLECULES.find((m) => m.id === id) || MOLECULES[0];
+/** Libellé court d'une entrée : molécule précise (ou texte libre « Autre »). */
+export const moleculeLabel = (cbd) => (cbd?.molecule === 'other' && cbd.moleculeOther ? cbd.moleculeOther : moleculeOf(cbd?.molecule || 'cbd').short);
+
 export const CBD_MODES = [
   { id: 'smoked', label: 'Fumé' },
   { id: 'vaped', label: 'Vaporisé' },

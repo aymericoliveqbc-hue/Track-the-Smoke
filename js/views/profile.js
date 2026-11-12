@@ -15,18 +15,20 @@ import { fmtMoney, fmtNum, fmtQty, UNITS } from '../core/format.js';
 import { priceAt, purchaseTotal } from '../domain/costs.js';
 import { computeStock } from '../domain/stock.js';
 import { buildExport, validateImport, mergeData, entriesToCSV } from '../domain/backup.js';
-import { CBD_FORMS, ACCESSORY_TYPES, labelOf } from '../domain/models.js';
+import { CBD_FORMS, ACCESSORY_TYPES, labelOf, MOLECULES } from '../domain/models.js';
 import { hashPin, newSalt, biometricAvailable, registerBiometric } from '../core/lock.js';
 import { healthContent } from './health.js';
 import { renderAppleHealth } from './applehealth.js';
 import { renderPacks } from './packs.js';
+import { renderAiSettings } from './projects.js';
+import { hasAiKey } from '../core/ai.js';
 
 const rerender = () => window.dispatchEvent(new Event('tts:render'));
 const back = (title) => h('header', { class: 'view-head' },
   h('a', { class: 'icon-btn', href: '#/profile', 'aria-label': 'Retour' }, icon('back', 20)), h('h1', null, title), h('span', { class: 'spacer' }));
 
 export function renderProfile(sub) {
-  const pages = { products, purchases, stock, categories, notifications, privacy, data, prefs, health, about, applehealth: () => renderAppleHealth(back('Apple Santé')), packs: () => renderPacks(back('Mes paquets')) };
+  const pages = { products, purchases, stock, categories, notifications, privacy, data, prefs, health, about, applehealth: () => renderAppleHealth(back('Apple Santé')), packs: () => renderPacks(back('Mes paquets')), ai: () => renderAiSettings(back('Assistant IA')) };
   if (sub && pages[sub]) return h('div', { class: 'view' }, pages[sub]());
   const s = state.settings;
   return h('div', { class: 'view' },
@@ -39,7 +41,8 @@ export function renderProfile(sub) {
       listRow({ icon: 'wallet', iconTone: 'orange', title: 'Achats', sub: `${state.purchases.length} achat(s) enregistré(s)`, onclick: () => go('purchases') }),
       listRow({ icon: 'box', iconTone: 'green', title: 'Stocks', sub: s.stock?.enabled ? 'Suivi activé' : 'Facultatif · désactivé', onclick: () => go('stock') }),
       listRow({ icon: 'custom', iconTone: 'blue', title: 'Catégories', sub: `${state.categories.filter((c) => !c.archived).length} catégories`, onclick: () => go('categories') })),
-    card(listRow({ icon: 'heart', iconTone: 'orange', title: 'Apple Santé', sub: s.health?.lastImportAt ? `Sommeil importé le ${formatDayShort(s.health.lastImportAt.slice(0, 10))}` : 'Importer ton sommeil depuis l\u2019iPhone', onclick: () => go('applehealth') })),
+    card(listRow({ icon: 'sparkle', title: 'Assistant IA', sub: hasAiKey() ? 'Activé · estimation des projets' : 'Facultatif · estimer le budget de tes projets', onclick: () => go('ai') }),
+      listRow({ icon: 'heart', iconTone: 'orange', title: 'Apple Santé', sub: s.health?.lastImportAt ? `Sommeil importé le ${formatDayShort(s.health.lastImportAt.slice(0, 10))}` : 'Importer ton sommeil depuis l\u2019iPhone', onclick: () => go('applehealth') })),
     card(
       listRow({ icon: 'bell', title: 'Rappels et notifications', sub: s.notifications.inApp ? 'Rappels discrets activés' : 'Désactivés', onclick: () => go('notifications') }),
       listRow({ icon: 'lock', iconTone: 'green', title: 'Confidentialité et verrouillage', sub: s.privacy.lock === 'none' ? 'Aucun verrouillage' : s.privacy.lock === 'biometric' ? 'Face ID / Touch ID' : 'Code PIN', onclick: () => go('privacy') }),
@@ -336,6 +339,7 @@ function prefs() {
     card(
       field('Devise', select([{ id: 'EUR', label: 'Euro (€)' }, { id: 'CHF', label: 'Franc suisse (CHF)' }, { id: 'GBP', label: 'Livre (£)' }, { id: 'USD', label: 'Dollar ($)' }, { id: 'CAD', label: 'Dollar canadien ($ CA)' }], s.currency, (v) => saveSettings({ currency: v || 'EUR' }))),
       field('Méthode de saisie par défaut', segmented([{ id: 'auto', label: 'Auto' }, { id: 'estimated', label: 'Estimée' }, { id: 'weighed', label: 'Pesée' }], s.defaultMethod || 'auto', (v) => saveSettings({ defaultMethod: v }), { small: true }), 'Tu peux toujours changer de méthode pour chaque saisie.'),
+      field('Molécule habituelle', select(MOLECULES.map((m) => ({ id: m.id, label: m.label })), s.defaultMolecule || 'cbd', (v) => saveSettings({ defaultMolecule: v || 'cbd', quickDefaults: Object.fromEntries(Object.entries(s.quickDefaults || {}).map(([k, q]) => [k, q.cbd ? { ...q, cbd: { ...q.cbd, molecule: v || 'cbd' } } : q])) })), 'Utilisée pour les joints enregistrés en un geste.'),
       field('Unités', h('p', { class: 'muted' }, 'Système métrique : grammes au centième (0,01 g), millilitres, gouttes, unités.'))),
     card(
       field('Date de début du suivi', h('input', { class: 'input', type: 'date', value: s.trackingStart || '', max: dayKey(), onchange: (e) => saveSettings({ trackingStart: e.target.value || null }) }),

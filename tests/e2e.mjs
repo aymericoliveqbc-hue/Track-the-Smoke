@@ -152,6 +152,52 @@ ok(/2,7\d\s*g CBD/.test(tilesNS2), 'S9 après repère, CBD recalculé rétroacti
 await p3.goto(`${URL_BASE}/#/profile/packs`); await p3.waitForTimeout(400);
 ok(/Ajustée/.test(await p3.locator('.tiles').first().innerText()), 'S9 précision CBD : ajustée sur un repère');
 await p3.screenshot({ path: `${SP}/packs.png`, fullPage: true });
+// SCÉNARIO 10 — iPhone : aucun bouton dans un <label> (WebKit renverrait le toucher au premier bouton)
+const labelCheck = async (pg, what) => {
+  const n = await pg.evaluate(() => [...document.querySelectorAll('label')].filter((l) => l.querySelector('button')).length);
+  ok(n === 0, `S10 ${what} : aucun bouton dans un label (${n})`);
+};
+await p3.goto(`${URL_BASE}/#/home`); await p3.waitForTimeout(400);
+await detailed(p3); await p3.locator('.sheet.open summary:has-text("Plus de détails")').click(); await labelCheck(p3, 'consommation');
+// Molécule 10-OH mémorisée
+await p3.locator('.sheet.open .chip:has-text("10-OH")').first().click(); await p3.waitForTimeout(200);
+ok(/10-OH/.test(await p3.locator('.sheet.open .form-block').nth(1).innerText()), 'S11 molécule 10-OH sélectionnable');
+await p3.locator('.sheet.open .sticky-actions button:has-text("Ajouter")').click(); await p3.waitForTimeout(400);
+await p3.click('.action:has-text("Joint")'); await p3.waitForTimeout(400);
+ok(/10-OH/.test(await p3.locator('.timeline').first().innerText()), 'S11 joint en un geste enregistré en 10-OH');
+await p3.click('.action:has-text("Envie")'); await p3.waitForTimeout(300); await p3.locator('.sheet.open summary').click(); await labelCheck(p3, 'envie');
+await p3.locator('.sheet.open [aria-label="Fermer"]').click(); await p3.waitForTimeout(300);
+await p3.click('.tab-add'); await p3.waitForTimeout(300); await p3.click('.add-tile:has-text("Nuit")'); await p3.waitForTimeout(300);
+await p3.locator('.sheet.open summary').click(); await labelCheck(p3, 'nuit');
+await p3.locator('.sheet.open [aria-label="Fermer"]').click(); await p3.waitForTimeout(300);
+// SCÉNARIO 12 — projet « Partir au Canada » avec estimation IA (API simulée)
+let sent = null;
+await ctx3.route('https://api.anthropic.com/v1/messages', async (route) => {
+  sent = { headers: route.request().headers(), body: JSON.parse(route.request().postData()) };
+  await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+    id: 'msg_test', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason: 'end_turn',
+    content: [{ type: 'text', text: JSON.stringify({ title: 'Partir à Montréal', assumptions: '1 personne, PVT, 3 mois de réserve.', items: [
+      { label: 'Billet d’avion', amount: 650, note: 'Aller simple' }, { label: 'Permis PVT', amount: 250, note: 'Frais officiels' },
+      { label: 'Premier loyer + caution', amount: 2400, note: 'Studio' }, { label: 'Fonds de sécurité', amount: 4500, note: '3 mois' } ] }) }],
+    usage: { input_tokens: 10, output_tokens: 10 } }) });
+});
+await p3.goto(`${URL_BASE}/#/profile/ai`); await p3.waitForTimeout(300);
+await p3.locator('input[type=password]').fill('sk-ant-test-0000');
+await p3.click('button:has-text("Enregistrer")'); await p3.waitForTimeout(300);
+await p3.goto(`${URL_BASE}/#/progress/goals`); await p3.waitForTimeout(400);
+await p3.click('button:has-text("Créer un projet")'); await p3.waitForTimeout(400);
+sh = p3.locator('.sheet.open').last();
+await sh.locator('textarea').first().fill('Déménager à Montréal, 1 personne, permis vacances-travail');
+await labelCheck(p3, 'projet');
+await sh.locator('button:has-text("Estimer avec l’IA")').click(); await p3.waitForTimeout(800);
+ok(sent && sent.headers['anthropic-dangerous-direct-browser-access'] === 'true' && sent.headers['x-api-key'] === 'sk-ant-test-0000' && sent.body.model === 'claude-opus-5-5' && sent.body.output_config.format.type === 'json_schema', 'S12 requête IA conforme (clé, en-têtes, modèle, sortie JSON)');
+ok(!JSON.stringify(sent.body).includes('joint') && !JSON.stringify(sent.body).includes('tabac'), 'S12 aucune donnée de consommation envoyée à l’IA');
+ok(/8\s*580/.test(await sh.locator('.budget-total').innerText()), 'S12 budget IA repris + 10 % d’imprévus (7 800 → 8 580 €)');
+await sh.locator('button:has-text("Créer le projet")').click(); await p3.waitForTimeout(600);
+const detail = await p3.locator('.sheet.open').last().innerText();
+ok(/Partir à Montréal/.test(detail) && /sur 8\s*580/.test(detail), 'S12 projet créé avec son budget');
+ok(/Renseigne le prix de tes paquets/.test(detail), 'S12 sans prix connus : l’app explique ce qui manque au lieu d’inventer');
+await p3.screenshot({ path: `${SP}/project.png` });
 console.log('captures :', SP);
 console.log(errors.length ? errors.join('\n') : 'NO JS ERRORS');
 await browser.close();

@@ -13,7 +13,7 @@ import { nowLocal, dayKey, addDays, formatDuration, hm, timeKey, isTime } from '
 import { fmtGrams, fmtMoney, fmtQty, isNum, round2, UNITS, fmtNum, parseDecimal, toInput } from '../core/format.js';
 import {
   uid, CAT, CBD_FORMS, CBD_MODES, CONTEXTS, MOODS, TRIGGERS, CRAVING_PRODUCTS, WAKE_FEELINGS, METHODS, ACCESSORY_TYPES,
-  normalizeAccessories, newProduct, newCustomCategory, labelOf,
+  normalizeAccessories, newProduct, newCustomCategory, labelOf, MOLECULES, moleculeOf, moleculeLabel,
 } from '../domain/models.js';
 import { unitPrice, purchaseTotal } from '../domain/costs.js';
 import { mean } from '../domain/stats.js';
@@ -91,7 +91,7 @@ function buildEntry(cat, base = {}) {
   const e = {
     id: uid('ent'), kind: 'consumption', categoryId: cat.id, at: nowLocal(), tzOffset: nowTz(),
     tobacco: cat.tobacco ? { grams: null, method: t, productId: state.settings.defaultProducts.tobacco, ...(base.tobacco || {}) } : null,
-    cbd: cat.cbd ? { amount: null, unit: cat.cbdUnit || 'g', method: t, productId: state.settings.defaultProducts.cbd, form: 'flower', ...(base.cbd || {}) } : null,
+    cbd: cat.cbd ? { amount: null, unit: cat.cbdUnit || 'g', method: t, productId: state.settings.defaultProducts.cbd, form: 'flower', molecule: productById(state.settings.defaultProducts.cbd)?.molecule || state.settings.defaultMolecule || 'cbd', moleculeOther: '', ...(base.cbd || {}) } : null,
     quantity: !cat.system && cat.tracksQuantity ? { amount: null, unit: cat.unit || 'unit', ...(base.quantity || {}) } : null,
     accessories: normalizeAccessories(base.accessories || cat.accessories || []),
     context: base.context || null, mood: null, mode: base.mode || null, note: '', custom: {},
@@ -112,7 +112,7 @@ async function persistEntry(entry, cat) {
   if (entry.cravingId) await linkCraving(entry);
   const qd = {
     tobacco: entry.tobacco ? { grams: entry.tobacco.grams, method: entry.tobacco.method, productId: entry.tobacco.productId } : undefined,
-    cbd: entry.cbd ? { amount: entry.cbd.amount, unit: entry.cbd.unit, method: entry.cbd.method, productId: entry.cbd.productId, form: entry.cbd.form } : undefined,
+    cbd: entry.cbd ? { amount: entry.cbd.amount, unit: entry.cbd.unit, method: entry.cbd.method, productId: entry.cbd.productId, form: entry.cbd.form, molecule: entry.cbd.molecule || 'cbd', moleculeOther: entry.cbd.moleculeOther || '' } : undefined,
     quantity: entry.quantity ? { ...entry.quantity } : undefined,
     accessories: entry.accessories, context: entry.context, mode: entry.mode,
   };
@@ -286,8 +286,9 @@ function cbdSection(entry, cat) {
     if (!unitOptions.includes(c.unit)) c.unit = unitOptions[0];
     const area = quantityArea(entry, c, 'amount', cat, 'cbd', c.unit, { step: c.unit === 'drop' || c.unit === 'unit' ? 1 : 0.01, label: 'Quantité de CBD' });
     fill(block,
-      h('div', { class: 'block-head' }, h('span', { class: 'dot dot-green' }), h('h4', null, 'CBD'), methodToggle(c, area.onMethod, area.canAuto)),
-      field(isJoint ? 'Type de CBD' : 'Produit consommé', chips(forms.map((f) => ({ id: f.id, label: f.label })), c.form, (v) => {
+      h('div', { class: 'block-head' }, h('span', { class: 'dot dot-green' }), h('h4', null, moleculeLabel(c)), methodToggle(c, area.onMethod, area.canAuto)),
+      moleculeField(c, 'molecule', render),
+      field(isJoint ? 'Forme' : 'Produit consommé', chips(forms.map((f) => ({ id: f.id, label: f.label })), c.form, (v) => {
         c.form = v || forms[0].id;
         const match = productsOf('cbd', (p) => p.cbdForm === c.form)[0];
         if (match) { c.productId = match.id; c.unit = match.unit; }
@@ -301,6 +302,25 @@ function cbdSection(entry, cat) {
   };
   render();
   return block;
+}
+
+/** Choix de la molécule (CBD, 10-OH-HHC, HHC, D10…). */
+function moleculeField(obj, key = 'molecule', onChange = null) {
+  const wrap = h('div', { class: 'field' });
+  const render = () => {
+    const cur = obj[key] || 'cbd';
+    const m = moleculeOf(cur);
+    fill(wrap, h('span', { class: 'field-label' }, 'Molécule'),
+      chips(MOLECULES.map((x) => ({ id: x.id, label: x.short })), cur, (v) => {
+        obj[key] = v || 'cbd';
+        if (key === 'molecule' && obj.amount !== undefined) saveSettings({ defaultMolecule: obj[key] });
+        if (onChange) onChange(); else render();
+      }, { allowNone: false }),
+      cur === 'other' ? textInput({ value: obj.moleculeOther || '', placeholder: 'Nom de la molécule', oninput: (v) => { obj.moleculeOther = v; } }) : null,
+      m.synthetic ? h('p', { class: 'hint' }, 'Molécule différente du CBD, suivie à part. Ses effets peuvent être proches du THC et sont encore peu étudiés.') : null);
+  };
+  render();
+  return wrap;
 }
 
 function customQuantity(entry, cat) {
@@ -603,6 +623,7 @@ export function openProductForm({ product: existing, kind = 'tobacco', onSaved }
           }, { small: true })) : h('p', { class: 'muted' }, kindLabel[p.kind]),
           field('Nom', textInput({ value: p.name, placeholder: p.kind === 'tobacco' ? 'Ex. Tabac à rouler' : p.kind === 'cbd' ? 'Ex. Fleurs CBD' : 'Ex. Feuilles slim', oninput: (v) => { p.name = v; } })),
           p.kind === 'tobacco' ? field('Marque', textInput({ value: p.brand, placeholder: 'Facultatif', oninput: (v) => { p.brand = v; } })) : null,
+          p.kind === 'cbd' ? moleculeField(p, 'molecule') : null,
           p.kind === 'cbd' ? field('Forme', chips(CBD_FORMS, p.cbdForm, (v) => { p.cbdForm = v || 'flower'; p.unit = CBD_FORMS.find((f) => f.id === p.cbdForm).unit === 'drop' ? 'drop' : p.cbdForm === 'other' ? p.unit : 'g'; render(); }, { allowNone: false })) : null,
           p.kind === 'cbd' && (p.cbdForm === 'oil' || p.cbdForm === 'other') ? field('Unité de mesure', segmented(['g', 'ml', 'drop', 'unit'].map((u) => ({ id: u, label: UNITS[u].label })), p.unit, (v) => { p.unit = v; }, { small: true })) : null,
           p.kind === 'cbd' ? field('Fournisseur', textInput({ value: p.supplier, placeholder: 'Facultatif', oninput: (v) => { p.supplier = v; } })) : null,

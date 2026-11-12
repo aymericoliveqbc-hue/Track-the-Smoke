@@ -6,6 +6,7 @@ import { icon } from '../ui/icons.js';
 import { card, cardHead, emptyState, note, badge, segmented, openSheet, toast, field, statTile } from '../ui/components.js';
 import { ring, lineChart, COLORS } from '../ui/charts.js';
 import { openGoalForm, formatGoalValue } from '../ui/forms.js';
+import { projectsSection } from './projects.js';
 import { state, derived, saveSettings, maybeComputeBaseline } from '../core/store.js';
 import { addDays, dayKey, formatDayLong, formatDayShort, formatElapsed } from '../core/dates.js';
 import { fmtGrams, fmtMoney, fmtNum, isNum } from '../core/format.js';
@@ -21,6 +22,7 @@ export function renderGoals({ embedded = false } = {}) {
     h('button', { class: 'icon-btn icon-btn-solid', 'aria-label': 'Nouvel objectif', onclick: () => openGoalForm() }, icon('plus', 20))));
 
   root.append(h('p', { class: 'muted intro' }, 'Ton rythme, tes règles. Une consommation n’efface jamais tes progrès.'));
+  root.append(projectsSection());
 
   // Phase d'observation
   const obs = observationStatus(s, today);
@@ -50,7 +52,7 @@ export function renderGoals({ embedded = false } = {}) {
 
   // Objectifs
   root.append(h('div', { class: 'section-title' }, h('h2', null, 'Mes objectifs'), h('button', { class: 'link', onclick: () => openGoalForm() }, 'Ajouter')));
-  const goals = state.goals.slice().sort((a, b) => Number(b.active) - Number(a.active));
+  const goals = state.goals.filter((g) => g.kind !== 'project').sort((a, b) => Number(b.active) - Number(a.active));
   if (!goals.length) {
     root.append(card(emptyState({ icon: 'goals', title: 'Aucun objectif', text: 'Réduire le tabac, le CBD, le nombre de joints, un budget, ou mieux gérer tes envies : choisis ce qui compte pour toi.', action: h('button', { class: 'btn btn-primary', onclick: () => openGoalForm() }, 'Créer un objectif') })));
   } else {

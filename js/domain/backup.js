@@ -77,7 +77,7 @@ const dec = (n) => (typeof n === 'number' && Number.isFinite(n) ? String(Math.ro
 /** CSV (séparateur « ; », décimales à virgule) lisible dans un tableur français. */
 export function entriesToCSV(entries, categories, costFn) {
   const catName = (id) => categories.find((c) => c.id === id)?.name || id;
-  const head = ['date', 'heure', 'type', 'categorie', 'tabac_g', 'tabac_methode', 'cbd_quantite', 'cbd_unite', 'cbd_methode', 'accessoires',
+  const head = ['date', 'heure', 'type', 'categorie', 'tabac_g', 'tabac_methode', 'cbd_quantite', 'cbd_unite', 'cbd_methode', 'molecule', 'accessoires',
     'cout_total', 'cout_complet', 'contexte', 'humeur', 'envie_intensite', 'envie_issue', 'declencheur', 'duree_min', 'commentaire'];
   const rows = [head.join(';')];
   const sorted = [...entries].sort((a, b) => (a.at < b.at ? -1 : 1));
@@ -87,7 +87,7 @@ export function entriesToCSV(entries, categories, costFn) {
       e.at.slice(0, 10), e.at.slice(11, 16), e.kind === 'craving' ? 'envie' : 'consommation',
       e.kind === 'consumption' ? catName(e.categoryId) : '',
       dec(e.tobacco?.grams), e.tobacco?.method || '',
-      dec(e.cbd?.amount), e.cbd?.unit || '', e.cbd?.method || '',
+      dec(e.cbd?.amount), e.cbd?.unit || '', e.cbd?.method || '', e.cbd ? (e.cbd.molecule === 'other' ? e.cbd.moleculeOther || 'autre' : e.cbd.molecule || 'cbd') : '',
       (e.accessories || []).map((a) => `${a.type}x${a.count}`).join(' '),
       c ? dec(c.total) : '', c ? (c.complete ? 'oui' : 'non') : '',
       labelOf(CONTEXTS, e.context) || e.situation || '', labelOf(MOODS, e.mood) || e.emotion || '',

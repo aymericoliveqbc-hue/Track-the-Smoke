@@ -37,6 +37,14 @@ const SECTIONS = [
     ],
   },
   {
+    id: 'synthetic', title: 'HHC, 10-OH-HHC, D10… : pas du CBD', tag: 'Molécules',
+    body: [
+      'Ces cannabinoïdes, souvent vendus à côté du CBD, sont obtenus par transformation chimique. Ce ne sont pas du CBD : plusieurs ont des effets psychoactifs proches de ceux du THC, et leurs effets à long terme sont encore très peu étudiés.',
+      'Leur statut légal change selon les pays et évolue rapidement (en France, le HHC et certains dérivés sont classés comme stupéfiants depuis 2023). Renseigne-toi sur la réglementation en vigueur.',
+      'L\u2019application suit chaque molécule séparément, sans jamais l\u2019additionner au CBD ni l\u2019assimiler au THC.',
+    ],
+  },
+  {
     id: 'habits', title: 'Les habitudes',
     body: [
       'Beaucoup de consommations sont associées à des routines (café, pause, trajet, coucher). Les repérer dans les statistiques « Habitudes » permet de choisir lesquelles modifier en premier.',

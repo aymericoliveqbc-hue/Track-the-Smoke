@@ -14,6 +14,7 @@ import { observationStatus } from '../domain/goals.js';
 import { CAT } from '../domain/models.js';
 import { pendingReminders, dismissReminder } from '../app-reminders.js';
 import { packsHomeCard } from './packs.js';
+import { homeProjectCard } from './projects.js';
 
 function greeting() {
   const hr = new Date().getHours();
@@ -39,6 +40,8 @@ export function renderHome() {
   root.append(todayCard(ctx, today));
   root.append(actions());
   root.append(packsHomeCard());
+  const proj = homeProjectCard();
+  if (proj) root.append(proj);
   const week = weekCard(ctx, today);
   if (week) root.append(week);
 

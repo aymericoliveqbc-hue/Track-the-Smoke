@@ -283,3 +283,15 @@ export function lastWhere(entries, pred) {
 export function lastDays(end, n) {
   return { start: addDays(end, -(n - 1)), end, days: n };
 }
+
+/** Grammes par molécule (CBD, 10-OH-HHC, HHC…) — jamais additionnés au tabac. */
+export function byMolecule(entries, range, ctx, labelFn) {
+  const cov = coverage(range, ctx.trackingStart, ctx.today);
+  const map = new Map();
+  for (const e of entriesIn(entries, cov)) {
+    if (!isConsumption(e) || !e.cbd || (e.cbd.unit || 'g') !== 'g' || !isNum(e.cbd.amount)) continue;
+    const k = labelFn(e.cbd);
+    map.set(k, (map.get(k) || 0) + e.cbd.amount);
+  }
+  return [...map.entries()].sort((a, b) => b[1] - a[1]);
+}
