@@ -16,6 +16,7 @@ import { summarize, dailySeries, measures } from '../domain/stats.js';
 import { observationStatus } from '../domain/goals.js';
 import { CAT } from '../domain/models.js';
 import { pendingReminders, dismissReminder } from '../app-reminders.js';
+import { sinceLastConsumption } from '../domain/sessions.js';
 import { packsHomeCard } from './packs.js';
 import { homeProjectCard } from './projects.js';
 import { beforeHomeCard } from './before.js';
@@ -92,19 +93,18 @@ function todayCard(ctx, today) {
     h('div', { class: 'hero-metrics' },
       metric(s.cost.total > 0 ? fmtMoney(s.cost.total) : '0 €', 'dépensé'),
       metric(String(s.cravings.resisted), s.cravings.resisted > 1 ? 'envies résistées' : 'envie résistée'),
-      metric(sinceLast(), 'depuis la dernière')),
+      metric(sinceLast(), 'depuis la fin de la dernière')),
     compare ? h('div', { class: 'hero-foot' }, h('span', { class: `hero-cmp ${compare.tone}` }, icon(compare.icon, 15), compare.text)) : null);
 }
 
 const metric = (value, label) => h('div', { class: 'hero-metric' }, h('b', null, value), h('span', null, label));
 
-/** Temps écoulé depuis la dernière consommation terminée (donnée réelle, sinon —). */
+/** Temps écoulé depuis la fin de la dernière consommation (donnée réelle, sinon —). */
 function sinceLast() {
-  const now = nowLocal();
-  const last = state.entries.filter((e) => e.kind === 'consumption' && e.at <= now).reduce((m, e) => (!m || e.at > m ? e.at : m), null);
-  if (!last) return '—';
-  const min = minutesSince(last, now);
-  return min < 1 ? 'à l’instant' : formatElapsed(min);
+  const r = sinceLastConsumption(state.entries, () => true, nowLocal());
+  if (r.running) return 'en cours';
+  if (r.sinceMin == null) return '—';
+  return r.sinceMin < 1 ? 'à l’instant' : formatElapsed(r.sinceMin);
 }
 
 /** Gestes de l'accueil : méthode principale mise en avant, autres habitudes, envie, autre. */

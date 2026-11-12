@@ -8,6 +8,7 @@
 import { addDays, diffDays, daysBetween, minutesOfDay, nowLocal, minutesSince, minutesBetween } from '../core/dates.js';
 import { isNum } from '../core/format.js';
 import { summarize, coverage, entriesIn, isConsumption, lastWhere, mean } from './stats.js';
+import { sinceLastConsumption } from './sessions.js';
 import { uid } from './models.js';
 
 /* ------------------------------------------------------------------ */
@@ -171,9 +172,8 @@ export const hasSubstance = (kind) => (e) =>
  */
 export function journeyStats(kind, journey, entries, ctx, baseline, now = nowLocal()) {
   const pred = hasSubstance(kind);
-  const last = lastWhere(entries, pred);
-  const sinceLastMin = last ? minutesSince(last.at, now) : null;
-  const out = { kind, status: journey?.status || 'tracking', last, sinceLastMin };
+  const { last, running, sinceMin: sinceLastMin } = sinceLastConsumption(entries, pred, now);
+  const out = { kind, status: journey?.status || 'tracking', last, running, sinceLastMin };
 
   const quit = journey?.quitDate;
   if (quit && quit <= ctx.today) {
@@ -232,8 +232,8 @@ export { coverage };
  */
 export function methodJourney(categoryId, mode, entries, ctx, now = nowLocal()) {
   const pred = (e) => isConsumption(e) && e.categoryId === categoryId;
-  const last = lastWhere(entries, pred);
-  const out = { categoryId, mode: mode?.mode || 'free', last, sinceLastMin: last ? minutesSince(last.at, now) : null };
+  const { last, running, sinceMin } = sinceLastConsumption(entries, pred, now);
+  const out = { categoryId, mode: mode?.mode || 'free', last, running, sinceLastMin: sinceMin };
   const quit = mode?.mode === 'quit' ? mode.quitDate : null;
   if (quit && quit <= ctx.today) {
     const days = daysBetween(quit, ctx.today);

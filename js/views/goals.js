@@ -137,7 +137,7 @@ function journeyCard(kind, title, color) {
   const children = [
     cardHead(title, statusCtl),
     h('div', { class: 'tiles tiles-2 tiles-flat' },
-      statTile({ label: 'Dernière fois', value: js.last ? `il y a ${formatElapsed(js.sinceLastMin)}` : 'jamais notée' }),
+      statTile({ label: 'Dernière fois', value: js.running ? 'en cours' : js.last ? `il y a ${formatElapsed(js.sinceLastMin)}` : 'jamais notée', sub: js.running ? null : js.last ? 'depuis sa fin' : null }),
       statTile({ label: '7 derniers jours', value: last7.value != null ? `${fmtGrams(last7.value)} / j` : '—', sub: base != null ? `référence ${fmtGrams(base)} / j` : null }),
       statTile({ label: kind === 'tobacco' ? 'Roulées (7 j)' : 'Joints CBD (7 j)', value: fmtNum(last7.count, 0) }),
       kind === 'tobacco' ? statTile({ label: 'Tabac dans les joints (7 j)', value: fmtGrams(last7.inJoints) }) : statTile({ label: 'Dépense CBD (7 j)', value: fmtMoney(last7.cost) })),
@@ -219,7 +219,7 @@ function methodCard(id, ctx) {
     await saveSettings({ habits: { ...state.settings.habits, modes } });
   };
   return card(
-    h('div', { class: 'card-head' }, h('h3', { class: 'card-title' }, cat.name), h('span', { class: 'muted small' }, j.last ? `dernière fois il y a ${formatElapsed(j.sinceLastMin)}` : 'jamais notée')),
+    h('div', { class: 'card-head' }, h('h3', { class: 'card-title' }, cat.name), h('span', { class: 'muted small' }, j.running ? 'en cours' : j.last ? `terminée il y a ${formatElapsed(j.sinceLastMin)}` : 'jamais notée')),
     segmented(MODES.map((m) => ({ id: m.id, label: m.label })), md.mode || 'free', (v) => setMode({ mode: v, quitDate: v === 'quit' ? (md.quitDate || ctx.today) : md.quitDate }), { small: true }),
     md.mode === 'quit' ? field('Date d\u2019arrêt', h('input', { class: 'input', type: 'date', value: md.quitDate || ctx.today, max: ctx.today, onchange: (e) => { if (e.target.value) setMode({ quitDate: e.target.value }); } })) : null,
     j.quit ? h('div', { class: 'mini-grid' },

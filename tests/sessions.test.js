@@ -43,3 +43,24 @@ test('pas de double session involontaire, sessions distinctes possibles', () => 
   assert.equal(duplicateRunning([r1], 'joint'), null);
   assert.equal(runningSessions([r1]).length, 1);
 });
+
+test('temps depuis la dernière consommation : compté depuis sa fin', async () => {
+  const { sinceLastConsumption, endOf } = await import('../js/domain/sessions.js');
+  const all = () => true;
+  const C = (id, at, extra = {}) => ({ id, kind: 'consumption', categoryId: 'joint', at, status: 'done', ...extra });
+  // Joint commencé à 20:00, fini à 20:15 : à 21:00 → 45 min (et non 60).
+  assert.equal(sinceLastConsumption([C('a', '2026-11-12T20:00', { endAt: '2026-11-12T20:15' })], all, '2026-11-12T21:00').sinceMin, 45);
+  // Sans heure de fin : compté depuis le début.
+  assert.equal(sinceLastConsumption([C('b', '2026-11-12T20:00')], all, '2026-11-12T21:00').sinceMin, 60);
+  // La plus récente FIN l'emporte : une longue session commencée plus tôt mais finie plus tard.
+  const r = sinceLastConsumption([C('long', '2026-11-12T18:00', { endAt: '2026-11-12T20:40' }), C('court', '2026-11-12T19:00', { endAt: '2026-11-12T19:05' })], all, '2026-11-12T21:00');
+  assert.equal(r.last.id, 'long'); assert.equal(r.sinceMin, 20);
+  // Fin après minuit.
+  assert.equal(sinceLastConsumption([C('n', '2026-11-12T23:30', { endAt: '2026-11-13T00:10' })], all, '2026-11-13T01:00').sinceMin, 50);
+  // Session en cours : pas de compteur.
+  const run = sinceLastConsumption([C('a', '2026-11-12T20:00', { endAt: '2026-11-12T20:15' }), C('v', '2026-11-12T20:30', { status: 'running', endAt: null })], all, '2026-11-12T21:00');
+  assert.equal(run.running, true); assert.equal(run.sinceMin, null);
+  // Rien d'enregistré : rien d'inventé.
+  assert.deepEqual(sinceLastConsumption([], all, '2026-11-12T21:00'), { last: null, running: false, sinceMin: null });
+  assert.equal(endOf(C('x', '2026-11-12T20:00', { endAt: '2026-11-12T19:00' })), '2026-11-12T20:00'); // fin incohérente ignorée
+});

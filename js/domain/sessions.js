@@ -15,6 +15,30 @@ export function runningSessions(entries) {
   return entries.filter(isRunning).sort((a, b) => (a.at < b.at ? -1 : 1));
 }
 
+/** Moment où une consommation s'est terminée : heure de fin si renseignée, sinon heure de début. */
+export function endOf(e) {
+  return e.status !== 'running' && e.endAt && e.endAt >= e.at ? e.endAt : e.at;
+}
+
+/**
+ * Temps écoulé depuis la dernière consommation, compté depuis sa FIN.
+ * Une session en cours n'est pas « finie » : running = true, sinceMin = null.
+ * Les saisies datées dans le futur sont ignorées.
+ * @returns {{ last: object|null, running: boolean, sinceMin: number|null }}
+ */
+export function sinceLastConsumption(entries, pred, now) {
+  let last = null; let running = false;
+  for (const e of entries) {
+    if (!isConsumption(e) || !pred(e) || e.at > now) continue;
+    if (e.status === 'running') { running = true; continue; }
+    if (!last || endOf(e) > endOf(last)) last = e;
+  }
+  if (running) return { last, running: true, sinceMin: null };
+  if (!last) return { last: null, running: false, sinceMin: null };
+  const end = endOf(last) > now ? now : endOf(last);
+  return { last, running: false, sinceMin: Math.max(0, minutesBetween(end, now)) };
+}
+
 /**
  * Sessions en cours depuis au moins `reminderMin` minutes (rappel de fin,
  * session probablement oubliée). reminderMin <= 0 : rappel désactivé.
