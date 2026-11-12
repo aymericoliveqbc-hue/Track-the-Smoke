@@ -21,13 +21,22 @@ assets/icons/               Logo SVG + PNG (192, 512, maskable, apple-touch)
 js/app.js                   Démarrage, routage (#/vue/sous-vue), verrouillage, SW
 js/app-reminders.js         Rappels dans l'app + notifications système
 js/core/
+  ai.js                     Assistant IA facultatif (budget de projet, analyse sur accord)
   dates.js                  Jours locaux, périodes, durées (sans dérive DST)
   format.js                 Décimales FR, devises, unités métriques
   db.js                     Accès IndexedDB (base perso / base démo)
   store.js                  État en mémoire, persistance, dérivés, sauvegardes locales
   lock.js                   PIN (SHA-256 salé) et WebAuthn (Face ID)
 js/domain/                  Logique métier pure, testée
-  models.js                 Modèle, référentiels, valeurs par défaut
+  models.js                 Modèle, référentiels, valeurs par défaut (SCHEMA_VERSION = 2)
+  methods.js                Catalogue des méthodes, compositions, components(entry), fiabilité
+  migrations.js             Migrations versionnées (schéma 1 → 2), fonctions pures
+  sessions.js               Sessions début / fin, durées, intervalles, sessions oubliées
+  autoqty.js                Quantités automatiques, calibration paquets + stocks, moyennes
+  finance.js                Économies réalisées / évitées / potentielles, coût par produit
+  analysis.js               Agrégats envoyés à l'analyse IA (sans texte libre) + garde-fou
+  projects.js               Projets d'épargne, répartition plafonnée à 100 %
+  before.js                 Dépenses « avant l'app »
   costs.js                  Calculs financiers
   stats.js                  Agrégations statistiques
   cravings.js               Analyse des envies
@@ -39,8 +48,11 @@ js/domain/                  Logique métier pure, testée
   backup.js                 Export / import / CSV
   demo.js                   Jeu de démonstration
 js/ui/                      DOM, icônes, graphiques SVG, composants, formulaires
-js/views/                   Accueil, Journal, Statistiques, Objectifs, Profil, Santé, Onboarding
-tests/domain.test.js        Tests unitaires (node --test)
+js/ui/record.js             Enregistrement universel (gestes, sessions, puffs, saisie détaillée)
+js/views/                   Accueil, Journal, Progrès, Objectifs, Réglages, Configuration (setup.js),
+                            Mes moyennes, Analyse IA, Projets, Paquets, Santé, Onboarding
+tests/*.test.js             Tests unitaires (node --test)
+tests/fixtures/backup-v1.json  Sauvegarde réelle de la V1 (test de migration)
 tests/e2e.mjs               Scénarios de validation (Playwright)
 ```
 
@@ -53,11 +65,18 @@ Base IndexedDB `track-the-smoke` (et `track-the-smoke-demo`, **totalement sépar
 ### Horodatage
 `at: "YYYY-MM-DDTHH:mm"` en **heure murale locale** + `tzOffset`. Une consommation reste dans sa journée même après un voyage ou un changement d'heure. Toute l'arithmétique de jours se fait sur des clés `YYYY-MM-DD` en UTC (pas de décalage DST). Le changement de date pendant que l'app est ouverte est détecté.
 
-### Consommation
+### Consommation (schéma 2)
 ```js
-{ id, kind: 'consumption', categoryId: 'joint'|'rolled'|'cbd'|<perso>, at, tzOffset,
-  tobacco: { grams, method: 'weighed'|'estimated', productId } | null,
-  cbd: { amount, unit: 'g'|'ml'|'drop'|'unit', method, productId, form } | null,
+{ id, kind: 'consumption', categoryId: <méthode du catalogue>|<perso>, at, tzOffset,
+  status: 'done'|'running', endAt,               // sessions
+  completion: 'done'|'partial'|'interrupted'|'abandoned', usedFraction, exceptional,
+  composition,                                   // joints : tobacco_cbd, cbd_pure, tobacco_thc…
+  tobacco: { grams, method: 'weighed'|'estimated'|'auto'|null, basis, productId } | null,
+  cbd: { amount, unit: 'g'|'ml'|'drop'|'unit', method, basis, productId, form, molecule } | null,
+  extra: [{ amount, unit, method, productId, form, molecule }],   // ingrédients supplémentaires
+  liquid: { ml, method, basis, productId, fills } | null,        // vape
+  units: { count, kind: 'cigarettes'|'cigars', productId } | null,
+  puffs: { count, productId, mode } | null,
   quantity: { amount, unit } | null,            // catégories personnalisées
   accessories: [{ type: 'slim'|'classic'|'filter'|'other', productId, count }],
   context, mood, mode, note, custom: {}, cravingId, createdAt, updatedAt }
@@ -99,7 +118,7 @@ Produit : `kind: tobacco|cbd|accessory`, unité, tarif de référence facultatif
 
 ## 5. Confidentialité & sécurité
 
-- Aucun appel réseau sortant (CSP `connect-src 'self'`), aucune bibliothèque tierce.
+- Aucun appel réseau sortant hors assistant IA facultatif (CSP `connect-src 'self' https://api.anthropic.com`), aucune bibliothèque tierce. Sans clé API, aucune requête externe n'est possible.
 - Verrouillage : PIN haché (SHA-256 + sel aléatoire), Face ID / Touch ID via WebAuthn (authentificateur de plateforme, vérification locale). Reverrouillage après 1 min en arrière-plan. Les secrets de verrouillage ne sont jamais exportés.
 - Limite : les données IndexedDB ne sont pas chiffrées par l'application ; elles bénéficient du chiffrement de l'appareil iOS (code de déverrouillage activé).
 - Sauvegardes : export JSON complet versionné (`schema`), CSV, import avec validation (remplacer ou fusionner), instantané local quotidien (7 conservés), rappel d'export mensuel. Suppression définitive (base détruite).
@@ -107,7 +126,7 @@ Produit : `kind: tobacco|cbd|accessory`, unité, tarif de référence facultatif
 
 ## 6. Notifications
 
-Rappels configurables (journal, nuit, bilan hebdomadaire, objectifs, bilan financier mensuel, sauvegarde) affichés en bandeaux discrets et masquables. Notifications système facultatives via le service worker. **Limite iOS** : sans serveur de push (exclu pour la confidentialité), une PWA ne peut pas programmer de notification locale ; elles sont émises quand l'application est ouverte ou revient au premier plan.
+Rappels configurables (journal, nuit, bilan hebdomadaire, objectifs, bilan financier mensuel, sauvegarde, **fin de session** : 15 min, 30 min, 1 h, 2 h ou jamais, une fois par session ouverte, `settings.sessions.reminderMin`) affichés en bandeaux discrets et masquables. Notifications système facultatives via le service worker. **Limite iOS** : sans serveur de push (exclu pour la confidentialité), une PWA ne peut pas programmer de notification locale ; elles sont émises quand l'application est ouverte ou revient au premier plan.
 
 ## 7. Quantités automatiques (sans balance)
 
@@ -117,7 +136,8 @@ Rappels configurables (journal, nuit, bilan hebdomadaire, objectifs, bilan finan
 - **Paquets** (store `packs`, base v2) : produit, contenance, ouverture (neuf ou déjà entamé avec une proportion ou des grammes restants), repères « il en reste… » (à l'œil), fin du paquet.
 - **Calibration** : entre deux repères, grammes partis = restant avant − restant après ; on retire les quantités saisies à la main (pesées/estimées), puis le reste est réparti sur les consommations `auto` du produit au prorata de leurs valeurs de départ → facteur k = réel / générique. Bornes 0,15 ≤ k ≤ 6 (repère incohérent ignoré). Les consommations d'une période calibrée prennent son k (la somme retombe exactement sur le paquet) ; les autres prennent la moyenne pondérée des 6 derniers segments (paquet terminé = poids 1, repère visuel ou ouverture entamée = 0,6).
 - **Recalcul rétroactif** à chaque enregistrement d'entrée, de paquet ou de valeurs de départ (`store.recalibrate`) : coûts, statistiques et stocks suivent.
-- **Précision** affichée : générique → ajustée sur 1 repère → n repères → précise (≥ 4).
+- **Précision** affichée : provisoire → calculée sur 1 repère → n repères → précise (≥ 4).
+- **V2** : valeurs de départ par variante (`settings.autoPriorsV2` : roulée, roulée slim, joint mélangé tabac / cannabinoïde, joint pur, ingrédient supplémentaire, CBD seul, pipe, chicha ; e-liquide sans valeur par défaut). Les comptages de stock (initial / comptage) servent aussi de repères, en plus des paquets. Facteur k par segment, par produit et par substance ; `basis` (segment / product / average / default) détermine la fiabilité affichée : CALCULÉE, ou « provisoire » tant qu'aucun repère n'existe. Consommation partielle : `usedFraction`. Historique des valeurs de départ (`autoPriorsHistory`), écran Réglages › Mes moyennes.
 
 ## 7 bis. Molécules et projets d'épargne
 
@@ -128,6 +148,22 @@ Rappels configurables (journal, nuit, bilan hebdomadaire, objectifs, bilan finan
 **Assistant IA** (`js/core/ai.js`) : facultatif. Requête HTTP directe (application sans dépendance ni build) vers `POST https://api.anthropic.com/v1/messages` avec la clé de l'utilisateur (`localStorage`, exclue des sauvegardes), en-têtes `anthropic-version: 2026-10-21` et `anthropic-dangerous-direct-browser-access: true`, modèle `claude-opus-5-5`, `output_config.effort: "low"`, sortie JSON contrainte par `output_config.format` (`json_schema`), repli automatique en cas de refus (`server-side-fallback-2026-07-01`, `fallbacks: "default"`), contrôle de `stop_reason`. Seuls le type, le nom et la description du projet sont envoyés. CSP : `connect-src 'self' https://api.anthropic.com`.
 
 **Avant l'app** (`js/domain/before.js`, `settings.before`) : budget mensuel = paquets × prix + grammes × prix/g + accessoires ; économies = (budget / 30,44) × jours écoulés (journée en cours au prorata de l'heure) − dépenses réelles. Feuilles et filtres ne sont comparés que si leur prix est connu (sinon retirés des deux côtés) ; l'économie est signalée surestimée si le prix du tabac ou du CBD manque. Rythme « maintenant » = 14 derniers jours ; pourcentage et projection annuelle affichés seulement après 3 jours. Les prix déclarés servent de tarif de référence aux produits qui n'en ont pas. Les projets utilisent ce budget comme référence s'il existe.
+
+## 7 ter. V2 — méthodes, sessions, finances, analyse IA
+
+**Moteur unique.** `components(entry)` (`methods.js`) normalise chaque consommation en composants `{path, substance, productKind, productId, amount, unit, method, basis, molecule}` (substances : tabac, cannabinoïde, liquide, unités, bouffées). Coûts, stocks, statistiques et quantités automatiques n'utilisent que cette fonction. Les familles CBD, THC et « non précisé » ne sont jamais additionnées.
+
+**Habitudes** (`settings.habits`) : `enabled[]`, `primary`, `modes{id: {mode: free|reduce|quit, quitDate}}`, `jointComposition`. Retirer une méthode masque seulement son raccourci : son historique, ses filtres et ses statistiques restent (test 9).
+
+**Sessions** (`sessions.js`) : `status: 'running'` puis `finishSession(e, endAt)` (refuse une fin avant le début). Durée = fin − début à travers minuit ; intervalle = début → début ; temps sans consommation = fin → début suivant. Une session en cours n'entre dans aucune durée. Doublon (même méthode et produit) : confirmation demandée.
+
+**Finances** (`finance.js`) : réalisées = budget « avant l'app » × jours − dépenses réelles (fenêtres 7 / 30 / 90 / 182 / 365 j, partielles signalées) ; évitées depuis un arrêt = rythme des 30 jours précédant l'arrêt × jours − dépenses (« insuffisant » sans historique) ; potentielles = simulateur sur l'historique réel. Moyenne mensuelle affichée seulement après 7 jours de suivi. Projets : `allocations()` répartit l'économie commune (parts fixées ≤ 100 %, reste partagé à parts égales).
+
+**Analyse IA** (`analysis.js`, `views/analysis.js`) : uniquement à la demande, après accord explicite (`settings.ai.dataConsent`, date, révocable). Le payload ne contient que des agrégats : nombres par méthode (libellés génériques du catalogue, « Méthode personnalisée n » sinon), quantités avec part pesée, dépenses, variations précalculées, envies, sessions, sommeil, modes. Jamais de note, de nom de produit, de lieu ni d'horodatage. L'aperçu affiché est exactement le JSON envoyé. Consignes : aucun chiffre inventé, aucun diagnostic, corrélation ≠ cause, ton non culpabilisant. `unverifiedNumbers()` marque « à vérifier » toute phrase citant un nombre absent des données.
+
+**Migration** (`migrations.js`, `store.runMigrations`) : instantané `backup_premigration_v2` dans le store `backups`, puis `migrateState` (pure, idempotente), appliquée aussi à l'import d'une sauvegarde V1. Voir `docs/V2-AUDIT.md`.
+
+**Apparence** : clair (blanc cassé `#F6F4EE`, cartes blanches, texte anthracite `#252A27`, vert forêt `#2D6A4F`, sauge `#8FAF98`), sombre, ou automatique (`prefers-color-scheme`, suivi en direct).
 
 ## 8. Apple Santé
 
@@ -140,26 +176,28 @@ Conversion (`samplesToNights`) : rattachement à la soirée (avant midi → veil
 
 ## 9. Graphiques
 
-SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de chaleur, nuage de points, barres de répartition, anneaux. Infobulle au toucher/survol, valeurs manquantes jamais dessinées comme des zéros, légendes systématiques au-delà d'une série. Couleurs pilotées par le thème (variables CSS `--c1…--c4`) : feuille (CBD, envies résistées), ardoise (tabac), terre cuite, bruyère. Clair « Sable » `#3E8A5C #3D72B0 #C4643A #8E6AAE` sur `#FBF8F1`, sombre « Forêt » `#4FA877 #5E92D6 #D9744A #9A7CC2` sur `#1C211B` : bande de luminance, chroma, séparation daltonisme (ΔE ≥ 8) et contraste ≥ 3:1 validés dans les deux modes. Interface : beige sable, vert forêt `#3F6E50`, typographie arrondie (SF Pro Rounded) pour titres et chiffres.
+SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de chaleur, nuage de points, barres de répartition, anneaux. Infobulle au toucher/survol, valeurs manquantes jamais dessinées comme des zéros, légendes systématiques au-delà d'une série. Couleurs pilotées par le thème (variables CSS `--c1…--c4`) : vert (CBD, envies résistées), bleu (tabac), orange, violet. Clair `#1E8E5A #3F74B5 #D0703A #8E6AAE` sur cartes blanches, sombre `#4FA877 #5E92D6 #D9744A #9A7CC2` sur `#1C211B` : contraste ≥ 3:1 et séparation daltonisme validés dans les deux modes.
 
 ## 10. Tests
 
-`npm test` — 49 tests unitaires couvrant notamment : analyse des décimales FR, arithmétique de dates (DST, années bissextiles), prix au gramme, historique de prix, coûts complets/incomplets, non-double comptage des accessoires, unités CBD incompatibles, séparation pesé/estimé, absence de zéros fictifs, analyse des joints (n), corrélations, import Apple Santé (lecture XML en flux, dates FR, nuits, fusion sans écrasement), quantités automatiques (paquet terminé = somme exacte, paquet entamé, repères, saisies manuelles déduites, repère incohérent ignoré), simulateur, référence/paliers/parcours sans remise à zéro, stocks, export/import, CSV, données de démo.
+`npm test` — 77 tests unitaires (aucune dépendance). Outre les tests V1 (décimales FR, dates, prix, coûts, séparation pesé/estimé, Apple Santé, quantités automatiques, simulateur, objectifs, stocks, sauvegardes), les **10 scénarios V2** :
 
-`npm run e2e` — rejoue dans Chromium (iPhone 14) les scénarios de validation :
-
-| # | Scénario | Vérification |
+| # | Scénario | Fichier |
 |---|---|---|
-| 1 | Joint 0,22 g tabac + 0,16 g CBD, slim + filtre | coût 0,97 € avec 15 €/30 g, 50 €/10 g, 1,60 €/32, 1,20 €/120 |
-| 2 | Roulée 0,25 g, feuille classique | aucune section ni quantité CBD, coût 0,15 € |
-| 3 | Envie 8/10 avant de dormir, résistée | 1 envie résistée, aucune consommation ajoutée |
-| 4 | Comparer deux semaines | test unitaire + vues Synthèse / Accueil |
-| 5 | 4 h pour s'endormir | enregistré, comparé à la journée précédente |
-| 6 | Réduction de 25 % | test unitaire sur historique + Simulateur |
-| 7 | Correction d'une quantité | tabac et dépenses recalculés |
-| 8 | Export → « réinstallation » → import | restauration complète sur un navigateur vierge |
-| 10–12 | iPhone : aucun bouton dans un `<label>` ; molécule 10-OH mémorisée ; projet « Partir au Canada » avec estimation IA (API simulée) | requête conforme, aucune donnée de consommation envoyée, budget + 10 % repris |
-| 9 | Sans balance : tabac ½ de 30 g et CBD ¾ de 5 g entamés, 6 joints, repère « il reste 1 g » | joints remplis automatiquement (0,20 g), puis CBD recalculé rétroactivement (≈ 2,75 g) |
+| 1 | Joints tabac + CBD, CBD pur, roulée : tabac, CBD et THC jamais confondus | `engine-v2.test.js` |
+| 2 | Vape, 10 ml à 6 mg/ml : coût et nicotine **contenue** | `engine-v2.test.js` |
+| 3 | Puffs : bouffées seules et sessions, sans doublon ; coût annoncé puis réel | `engine-v2.test.js` |
+| 4 | Stock : initial + achats ± corrections − consommations − pertes | `engine-v2.test.js` |
+| 5 | Moyennes pesées et estimées séparées, fiabilité indiquée | `averages.test.js` |
+| 6 | Session commencée puis terminée, session à travers minuit | `sessions.test.js` |
+| 7 | Finance : coût unitaire, quotidien, mensuel, stock, économies réelles et projetées | `finance-v2.test.js`, `engine-v2.test.js` |
+| 8 | Migration V1 → V2 : aucune donnée perdue ni réécrite | `migration.test.js` |
+| 9 | Méthode retirée des habitudes : historique et statistiques conservés | `scenarios-v2.test.js` |
+| 10 | Données insuffisantes : aucune quantité, moyenne ou économie inventée | `scenarios-v2.test.js` |
+
+Également : `analysis.test.js` (payload IA sans texte libre, garde-fou chiffres, sessions oubliées) et `sw-assets.test.js` (le service worker précache chaque module).
+
+`npm run e2e` — 51 vérifications dans Chromium (iPhone 14), dont : scénarios V1 (joint 0,91 €, roulée, envie, nuit, correction, export / restauration, paquets entamés sans balance, aucun bouton dans un `<label>`, molécule 10-OH, projet avec IA simulée) ; V2 : configuration guidée, joint en un geste, session vape et garde-fou de doublon, ½ réservoir = 1 ml, pavé de puffs, cigarette à moitié = 0,30 €, consommation exceptionnelle ; **test 8 en navigateur** (import de `tests/fixtures/backup-v1.json`, identifiants, quantités, méthodes, achats, nuits, réglages et instantané vérifiés dans IndexedDB) ; **test 9** (retrait de « Joint » : journal, filtre et Progrès conservés) ; **test 10** (appareil vierge : aucune donnée fictive).
 
 ## 11. Mode démonstration
 

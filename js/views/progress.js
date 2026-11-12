@@ -44,6 +44,12 @@ export function renderProgress(tab = 'conso') {
     root.append(card(emptyState({ icon: 'stats', title: 'Rien à montrer pour l’instant', text: 'Tes analyses apparaîtront dès tes premières saisies. Aucune donnée fictive n’est affichée.' })));
     return root;
   }
+  // Rien n'a encore été enregistré : pas de zéros ni de moyennes sans objet.
+  const nothingYet = !state.entries.some((e) => e.kind === 'consumption') && !state.purchases.length;
+  if (nothingYet && (tab === 'conso' || tab === 'money')) {
+    root.append(card(emptyState({ icon: 'stats', title: 'Rien à montrer pour l’instant', text: 'Tes analyses apparaîtront dès tes premières saisies. Aucune donnée fictive n’est affichée.' })));
+    return root;
+  }
   root.append(periodPicker());
   const fn = { conso, money, sessions, cravings, sleep, products }[tab] || conso;
   root.append(fn());

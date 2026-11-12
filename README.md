@@ -2,9 +2,9 @@
 
 **Know your habits. Take back control.**
 
-Application mobile personnelle (PWA installable sur iPhone, 100 % hors ligne, interface épurée blanc & vert) pour **comprendre, quantifier, réduire puis arrêter** la consommation de tabac et de CBD : consommations, envies (résistées ou non), achats et budget, stocks, sommeil et bien-être, objectifs progressifs.
+Application mobile personnelle (PWA installable sur iPhone, 100 % hors ligne, vert forêt et sauge sur blanc cassé, mode sombre facultatif) pour **comprendre, quantifier, réduire ou arrêter** sa consommation — cigarettes, roulées, joints, CBD et autres cannabinoïdes, vape, puff, cigare, cigarillo, pipe, chicha ou méthode personnalisée : consommations et sessions, envies, achats et budget, stocks, sommeil, objectifs par méthode.
 
-- Aucun compte, aucun serveur, aucune publicité, aucun traceur : les données restent sur l'appareil (IndexedDB).
+- Aucun compte, aucun serveur, aucune publicité, aucun traceur : les données restent sur l'appareil (IndexedDB). L'assistant IA est facultatif et n'envoie rien sans accord explicite.
 - Jamais de culpabilisation : une consommation n'efface jamais les progrès, aucun compteur n'est remis à zéro.
 - Aucune donnée inventée : une quantité ou un prix manquant est signalé, jamais remplacé.
 
@@ -25,22 +25,27 @@ Aucune étape de build : le dossier peut être publié tel quel sur n'importe qu
 2. Bouton **Partager** → **Sur l'écran d'accueil**.
 3. L'application s'ouvre en plein écran, fonctionne hors ligne et respecte les zones de sécurité (Dynamic Island, barre gestuelle).
 
-## Fonctionnalités
+## Fonctionnalités (V2)
 
 Navigation : **Accueil · Journal · ＋ · Progrès · Réglages**.
 
 | Écran | Contenu |
 |---|---|
-| **Accueil** | La journée en un coup d'œil (consommations, joints, roulées, envies résistées, grammes, coût), quatre gestes (Joint, Roulée, Envie, Autre), paquets en cours, 7 derniers jours, timeline du jour. |
-| **＋ / gestes** | Joint ou roulée enregistrés **en un geste** avec quantités calculées automatiquement ; « Modifier » juste après si besoin. Saisie détaillée disponible (heure, quantités, contexte). |
-| **Journal** | Historique par jour, recherche, filtres, calendrier mensuel, détail d'une journée, modification, duplication, suppression avec annulation. |
-| **Progrès** | Conso, Argent (dont « Et si… je réduisais »), Envies, Sommeil, Objectifs — en phrases simples ; analyses détaillées à un geste. |
-| **Mes paquets** | Sans balance : paquets neufs ou entamés, « il en reste… » à l'œil, paquet terminé → grammes réels par joint et par roulée, de plus en plus précis. |
-| **Avant l'app** | Dépenses habituelles déclarées à peu près (paquets de tabac par mois et prix, grammes de CBD / molécule par mois et prix au gramme, feuilles & filtres) : économies visibles dès le premier jour, en direct, comparées aux vraies dépenses ; « avant / maintenant » par mois. Les prix déclarés complètent ceux des produits. |
-| **Projets d'épargne** | Partir au Canada, voyager, acheter quelque chose : budget par postes (+ marge d'imprévus), épargne déjà constituée, économies dues à la réduction calculées automatiquement, date estimée au rythme actuel, si je réduis de 25 / 50 % ou si j'arrête, réduction nécessaire pour une date visée. **Assistant IA facultatif** (Claude, clé API personnelle) qui propose un budget détaillé à partir d'une description. |
-| **Molécules** | CBD, 10-OH-HHC, HHC, HHC-P, Δ10, Δ8, H4-CBD, THC-P, CBN, CBG ou autre : suivies séparément, jamais assimilées au CBD ni au THC. |
+| **Configuration guidée** | Méthodes utilisées (catalogue de 10 + personnalisées) → produits et prix → méthode principale → mode par méthode (suivi libre, réduction, arrêt). Modifiable à tout moment dans Réglages › Mes habitudes. |
+| **Accueil** | Sessions en cours, la journée en un coup d'œil (quantités par méthode, coût), gestes rapides des méthodes actives (principale mise en avant), paquets en cours, projet, 7 derniers jours. |
+| **＋ / gestes** | Un geste par méthode : joint, roulée, cigarette enregistrés immédiatement (« Modifier » juste après) ; vape, chicha, pipe, cigare démarrent une **session** ; puff : pavé de bouffées (+1, +3…). « Autre consommation » pour une méthode inhabituelle (exceptionnelle, sans toucher aux raccourcis). Saisie détaillée : composition du joint, ingrédients multiples, liquide, unités, consommation partielle, heure de fin. |
+| **Sessions** | Début / fin, fin à une heure passée en cas d'oubli, sessions à travers minuit, garde-fou contre les doublons, rappel facultatif si une session reste ouverte. |
+| **Journal** | Historique, recherche, filtres selon les méthodes réellement utilisées (y compris retirées), calendrier, détail d'une journée, achats, badges de fiabilité. |
+| **Progrès** | 7 onglets — Conso, Argent, Sessions, Envies, Sommeil, Objectifs, Produits — sur 7 j / 30 j / 90 j / 6 mois / 1 an / période libre. |
+| **Argent** | Trois économies distinctes : **réalisées** (par rapport à « avant l'app »), **évitées** depuis un arrêt (estimation), **potentielles** (simulateur : arrêt d'une ou plusieurs méthodes, réduction). Coût par méthode et par produit, achats payés vs valeur consommée (jamais additionnés). |
+| **Quantités** | Fiabilité affichée partout : **pesée**, **calculée** (paquets terminés, comptages de stock), **estimée**, **provisoire**, **inconnue**. Moyennes adaptatives par méthode et par produit, avec historique (Réglages › Mes moyennes). |
+| **Produits & stocks** | Tabac, cannabinoïdes, cigarettes, cigares, e-liquides, puffs, appareils, accessoires : achats datés, stock = initial + achats ± corrections − consommations − pertes. |
+| **Projets d'épargne** | Projets génériques (voyage, épargne, achat, logement, loisirs…) ; répartition des économies entre projets plafonnée à 100 % (aucun double comptage). |
+| **Assistant IA** (facultatif) | Clé API personnelle. Estimation du budget d'un projet (seule sa description est envoyée) ; analyse d'une période **sur accord explicite**, avec aperçu exact des agrégats envoyés, chiffres non vérifiables signalés, sans diagnostic. |
 | **Apple Santé** | Import du sommeil (export complet ou Raccourci iOS). |
-| **Réglages** | Produits et prix, achats, stocks, catégories, rappels, verrouillage PIN / Face ID, export / import, mode démo, informations santé. |
+| **Réglages** | Habitudes, produits, achats, stocks, moyennes, rappels, apparence (Clair / Sombre / Auto), verrouillage PIN / Face ID, export / import, mode démo. |
+
+Les données d'une version précédente sont **migrées automatiquement** (instantané conservé avant migration) ; rien n'est supprimé ni réécrit.
 
 ## Documentation technique
 

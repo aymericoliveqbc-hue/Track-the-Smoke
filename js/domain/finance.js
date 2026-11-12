@@ -15,6 +15,8 @@ export const COST_LABELS = {
   cigarettes: 'Cigarettes', cigars: 'Cigares', puffs: 'Puffs', accessories: 'Feuilles & filtres',
 };
 
+export const MIN_DAYS_FOR_MONTHLY = 7;
+
 /** Dépenses aujourd'hui / 7 j / mois / année, moyennes quotidienne et mensuelle. */
 export function financeOverview(entries, ctx) {
   const t = ctx.today;
@@ -26,7 +28,9 @@ export function financeOverview(entries, ctx) {
     week: spend(addDays(t, -6)).cost.total,
     month: spend(startOfMonth(t)).cost.total,
     year: spend(`${t.slice(0, 4)}-01-01`).cost.total,
-    avgDaily, avgMonthly: avgDaily != null ? avgDaily * DAYS_PER_MONTH : null,
+    avgDaily,
+    // Une moyenne mensuelle n'est extrapolée qu'à partir d'une semaine de suivi.
+    avgMonthly: avgDaily != null && all.coverage.days >= MIN_DAYS_FOR_MONTHLY ? avgDaily * DAYS_PER_MONTH : null,
     trackedDays: all?.coverage?.days || 0,
     incomplete: all?.cost.incomplete || 0,
   };

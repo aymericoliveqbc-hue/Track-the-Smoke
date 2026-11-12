@@ -1,0 +1,428 @@
+{
+  "app": "track-the-smoke",
+  "schema": 1,
+  "exportedAt": "2026-11-12T00:55:01.776Z",
+  "demo": false,
+  "counts": {
+    "entries": 3,
+    "nights": 1,
+    "products": 5,
+    "purchases": 5,
+    "inventories": 0,
+    "categories": 3,
+    "goals": 0
+  },
+  "settings": {
+    "id": "settings",
+    "schema": 1,
+    "onboarded": true,
+    "currency": "EUR",
+    "theme": "dark",
+    "trackingStart": "2026-11-12",
+    "defaultProducts": {
+      "tobacco": "prd_tobacco",
+      "cbd": "prd_cbd_flower",
+      "slim": "prd_slim",
+      "classic": "prd_classic",
+      "filter": "prd_filter",
+      "other": null
+    },
+    "quickDefaults": {
+      "joint": {
+        "tobacco": {
+          "grams": 0.3,
+          "method": "weighed",
+          "productId": "prd_tobacco"
+        },
+        "cbd": {
+          "amount": 0.16,
+          "unit": "g",
+          "method": "weighed",
+          "productId": "prd_cbd_flower",
+          "form": "flower"
+        },
+        "accessories": [
+          {
+            "type": "slim",
+            "productId": null,
+            "count": 1
+          },
+          {
+            "type": "filter",
+            "productId": null,
+            "count": 1
+          }
+        ],
+        "context": null,
+        "mode": null
+      },
+      "rolled": {
+        "tobacco": {
+          "grams": 0.25,
+          "method": "estimated",
+          "productId": "prd_tobacco"
+        },
+        "accessories": [
+          {
+            "type": "classic",
+            "productId": null,
+            "count": 1
+          }
+        ],
+        "context": null,
+        "mode": null
+      }
+    },
+    "defaultMethod": "estimated",
+    "observation": {
+      "enabled": true,
+      "startDate": "2026-11-12",
+      "days": 14
+    },
+    "baseline": null,
+    "journeys": {
+      "tobacco": {
+        "status": "tracking",
+        "quitDate": null
+      },
+      "cbd": {
+        "status": "tracking",
+        "quitDate": null
+      }
+    },
+    "stock": {
+      "enabled": false,
+      "since": null
+    },
+    "notifications": {
+      "inApp": true,
+      "enabled": false,
+      "journal": {
+        "on": true,
+        "time": "21:30"
+      },
+      "sleep": {
+        "on": true,
+        "time": "09:30"
+      },
+      "weekly": {
+        "on": true,
+        "weekday": 6,
+        "time": "19:00"
+      },
+      "goals": {
+        "on": false,
+        "time": "12:00"
+      },
+      "monthly": {
+        "on": true
+      }
+    },
+    "privacy": {
+      "lock": "none",
+      "pinHash": null,
+      "pinSalt": null,
+      "credentialId": null,
+      "autoBackup": true,
+      "pinLength": null
+    },
+    "lastExportAt": null,
+    "statsMethod": "all",
+    "dismissedTips": []
+  },
+  "data": {
+    "entries": [
+      {
+        "id": "ent_mwcu5r8rqk9bd6",
+        "kind": "consumption",
+        "categoryId": "joint",
+        "at": "2026-11-12T00:54",
+        "tzOffset": 0,
+        "tobacco": {
+          "grams": 0.3,
+          "method": "weighed",
+          "productId": "prd_tobacco"
+        },
+        "cbd": {
+          "amount": 0.16,
+          "unit": "g",
+          "method": "weighed",
+          "productId": "prd_cbd_flower",
+          "form": "flower"
+        },
+        "quantity": null,
+        "accessories": [
+          {
+            "type": "slim",
+            "productId": null,
+            "count": 1
+          },
+          {
+            "type": "filter",
+            "productId": null,
+            "count": 1
+          }
+        ],
+        "context": null,
+        "mood": null,
+        "mode": null,
+        "note": "",
+        "custom": {},
+        "cravingId": null,
+        "createdAt": "2026-11-12T00:54:56.043Z",
+        "updatedAt": "2026-11-12T00:55:00.844Z"
+      },
+      {
+        "id": "ent_mwcu5s2d94pk96",
+        "kind": "consumption",
+        "categoryId": "rolled",
+        "at": "2026-11-12T00:54",
+        "tzOffset": 0,
+        "tobacco": {
+          "grams": 0.25,
+          "method": "estimated",
+          "productId": "prd_tobacco"
+        },
+        "cbd": null,
+        "quantity": null,
+        "accessories": [
+          {
+            "type": "classic",
+            "productId": null,
+            "count": 1
+          }
+        ],
+        "context": null,
+        "mood": null,
+        "mode": null,
+        "note": "",
+        "custom": {},
+        "cravingId": null,
+        "createdAt": "2026-11-12T00:54:57.109Z",
+        "updatedAt": "2026-11-12T00:54:57.577Z"
+      },
+      {
+        "id": "crv_mwcu5su8md48xp",
+        "kind": "craving",
+        "at": "2026-11-12T00:54",
+        "tzOffset": 0,
+        "intensity": 8,
+        "product": "both",
+        "trigger": "bedtime",
+        "triggerOther": "",
+        "durationMin": null,
+        "situation": null,
+        "emotion": null,
+        "note": "",
+        "outcome": "resisted",
+        "consumptionId": null,
+        "createdAt": "2026-11-12T00:54:58.114Z",
+        "updatedAt": "2026-11-12T00:54:58.709Z"
+      }
+    ],
+    "nights": [
+      {
+        "id": "night_2026-11-11",
+        "date": "2026-11-11",
+        "bedTime": null,
+        "tryTime": null,
+        "asleepTime": null,
+        "latencyMin": 240,
+        "wakeTime": null,
+        "totalSleepMin": null,
+        "awakenings": null,
+        "quality": null,
+        "wakeFeeling": null,
+        "note": "",
+        "stress": null,
+        "agitation": null,
+        "fatigue": null,
+        "mood": null,
+        "relaxDifficulty": null,
+        "energy": null
+      }
+    ],
+    "products": [
+      {
+        "id": "prd_cbd_flower",
+        "kind": "cbd",
+        "name": "CBD fleurs",
+        "brand": "",
+        "supplier": "",
+        "cbdForm": "flower",
+        "accessoryType": null,
+        "unit": "g",
+        "refPackPrice": null,
+        "refPackSize": null,
+        "archived": false,
+        "createdAt": "2026-11-12T00:54:54.035Z"
+      },
+      {
+        "id": "prd_classic",
+        "kind": "accessory",
+        "name": "Feuilles classiques",
+        "brand": "",
+        "supplier": "",
+        "cbdForm": null,
+        "accessoryType": "classic",
+        "unit": "unit",
+        "refPackPrice": null,
+        "refPackSize": null,
+        "archived": false,
+        "createdAt": "2026-11-12T00:54:54.035Z"
+      },
+      {
+        "id": "prd_filter",
+        "kind": "accessory",
+        "name": "Filtres",
+        "brand": "",
+        "supplier": "",
+        "cbdForm": null,
+        "accessoryType": "filter",
+        "unit": "unit",
+        "refPackPrice": null,
+        "refPackSize": null,
+        "archived": false,
+        "createdAt": "2026-11-12T00:54:54.035Z"
+      },
+      {
+        "id": "prd_slim",
+        "kind": "accessory",
+        "name": "Feuilles slim",
+        "brand": "",
+        "supplier": "",
+        "cbdForm": null,
+        "accessoryType": "slim",
+        "unit": "unit",
+        "refPackPrice": null,
+        "refPackSize": null,
+        "archived": false,
+        "createdAt": "2026-11-12T00:54:54.035Z"
+      },
+      {
+        "id": "prd_tobacco",
+        "kind": "tobacco",
+        "name": "Tabac à rouler",
+        "brand": "",
+        "supplier": "",
+        "cbdForm": null,
+        "accessoryType": null,
+        "unit": "g",
+        "refPackPrice": null,
+        "refPackSize": null,
+        "archived": false,
+        "createdAt": "2026-11-12T00:54:54.035Z"
+      }
+    ],
+    "purchases": [
+      {
+        "id": "pur_mwcu5qtzx5wfzy",
+        "productId": "prd_tobacco",
+        "date": "2026-11-12",
+        "packPrice": 15,
+        "packSize": 30,
+        "packCount": 1,
+        "supplier": "",
+        "note": "Saisi à l’accueil",
+        "addToStock": false
+      },
+      {
+        "id": "pur_mwcu5qu910cycn",
+        "productId": "prd_cbd_flower",
+        "date": "2026-11-12",
+        "packPrice": 50,
+        "packSize": 10,
+        "packCount": 1,
+        "supplier": "",
+        "note": "Saisi à l’accueil",
+        "addToStock": false
+      },
+      {
+        "id": "pur_mwcu5quaz5157s",
+        "productId": "prd_slim",
+        "date": "2026-11-12",
+        "packPrice": 1.6,
+        "packSize": 32,
+        "packCount": 1,
+        "supplier": "",
+        "note": "Saisi à l’accueil",
+        "addToStock": false
+      },
+      {
+        "id": "pur_mwcu5qubzs9lu4",
+        "productId": "prd_classic",
+        "date": "2026-11-12",
+        "packPrice": 1,
+        "packSize": 50,
+        "packCount": 1,
+        "supplier": "",
+        "note": "Saisi à l’accueil",
+        "addToStock": false
+      },
+      {
+        "id": "pur_mwcu5qubfpxbql",
+        "productId": "prd_filter",
+        "date": "2026-11-12",
+        "packPrice": 1.2,
+        "packSize": 120,
+        "packCount": 1,
+        "supplier": "",
+        "note": "Saisi à l’accueil",
+        "addToStock": false
+      }
+    ],
+    "inventories": [],
+    "categories": [
+      {
+        "id": "cbd",
+        "system": true,
+        "name": "CBD seul",
+        "short": "CBD seul",
+        "icon": "leafless",
+        "color": "green",
+        "tobacco": false,
+        "cbd": true,
+        "cbdUnit": "g",
+        "accessories": []
+      },
+      {
+        "id": "joint",
+        "system": true,
+        "name": "Joint tabac + CBD",
+        "short": "Joint",
+        "icon": "joint",
+        "color": "violet",
+        "tobacco": true,
+        "cbd": true,
+        "cbdUnit": "g",
+        "accessories": [
+          {
+            "type": "slim",
+            "count": 1
+          },
+          {
+            "type": "filter",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "rolled",
+        "system": true,
+        "name": "Cigarette roulée",
+        "short": "Roulée",
+        "icon": "rolled",
+        "color": "blue",
+        "tobacco": true,
+        "cbd": false,
+        "accessories": [
+          {
+            "type": "classic",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "goals": []
+  }
+}

@@ -47,3 +47,22 @@
    - projets, achats, stocks, nuits, objectifs : inchangés.
 3. Les champs absents sont interprétés comme « non applicable », jamais comme zéro.
 4. Les sauvegardes V1 restent importables (migration appliquée à l'import).
+
+## 5. Résolution (V2 livrée)
+
+| Problème (§ 2) | Résolution | Vérifié par |
+|---|---|---|
+| 1. Méthodes figées | Catalogue de 10 méthodes + personnalisées, configuration guidée | e2e (configuration, gestes) |
+| 2. Joint présumé tabac + CBD | `composition` explicite, ingrédients multiples, aucun présupposé | test 1 |
+| 3. Molécules confondues | Familles CBD / THC / non précisé séparées dans tous les totaux | test 1 |
+| 4. Valeur unique par catégorie | Valeurs de départ par variante, k par produit et par segment | test 5, Mes moyennes |
+| 5. Paquets et stocks séparés | Les comptages de stock calibrent aussi les quantités | tests 4 et 5 |
+| 6. Double comptage des projets | Répartition plafonnée à 100 % | `finance-v2.test.js` |
+| 7. Trois notions d'économie mêlées | Réalisées / évitées / potentielles, libellées séparément | test 7 |
+| 8. Pas de sessions ni de partiel | Sessions début / fin, minuit, oubli, doublons ; `usedFraction` | test 6, e2e |
+| 9. Envies limitées | Produit d’envie : tabac, CBD, THC, vape, puff, plusieurs, autre | formulaire d’envie (`CRAVING_PRODUCTS`) |
+| 10. Mode sombre retiré | Clair / Sombre / Auto | vérification visuelle |
+
+Ajouts : analyse IA sur accord explicite (agrégats seulement, aperçu exact), rappel de fin de session, garde-fou « rien d'inventé » (moyenne mensuelle après 7 jours de suivi, écrans vides sans saisie).
+
+Migration validée sur une vraie sauvegarde V1 (`tests/fixtures/backup-v1.json`) : identifiants, quantités, méthodes de saisie, achats, nuits et réglages identiques ; statistiques inchangées ; instantané pré-migration présent.
