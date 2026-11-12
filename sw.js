@@ -2,7 +2,7 @@
 // Stratégie « réseau d'abord, cache en secours » pour l'application (aucune donnée personnelle
 // n'est mise en cache ici : elles vivent dans IndexedDB).
 
-const VERSION = 'tts-v2.1.0';
+const VERSION = 'tts-v2.2.0';
 const ASSETS = [
   './',
   './index.html',
@@ -24,6 +24,7 @@ const ASSETS = [
   './js/core/store.js',
   './js/domain/autoqty.js',
   './js/domain/backup.js',
+  './js/domain/before.js',
   './js/domain/costs.js',
   './js/domain/cravings.js',
   './js/domain/demo.js',
@@ -43,6 +44,7 @@ const ASSETS = [
   './js/ui/forms.js',
   './js/ui/icons.js',
   './js/views/applehealth.js',
+  './js/views/before.js',
   './js/views/goals.js',
   './js/views/health.js',
   './js/views/home.js',

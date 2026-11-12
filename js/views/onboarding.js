@@ -1,37 +1,32 @@
-// Premier lancement : philosophie, tarifs, période d'observation.
+// Premier lancement : philosophie, dépenses d'avant, période d'observation.
 
 import { h, fill } from '../ui/dom.js';
 import { icon, logo } from '../ui/icons.js';
-import { decimalInput, field, toast } from '../ui/components.js';
-import { save, saveSettings, switchMode } from '../core/store.js';
+import { toast } from '../ui/components.js';
+import { beforeFields, applyBeforePrices } from './before.js';
+import { emptyBefore, beforeMonthly } from '../domain/before.js';
+import { saveSettings, switchMode } from '../core/store.js';
 import { dayKey } from '../core/dates.js';
-import { isNum } from '../core/format.js';
-import { uid } from '../domain/models.js';
+import { fmtMoney } from '../core/format.js';
 
 export function renderOnboarding(onDone) {
   let step = 0;
-  const prices = {
-    prd_tobacco: { label: 'Tabac à rouler', price: null, size: null, unit: 'g', sizeLabel: 'Poids du paquet' },
-    prd_cbd_flower: { label: 'CBD (fleurs)', price: null, size: null, unit: 'g', sizeLabel: 'Quantité achetée' },
-    prd_slim: { label: 'Feuilles slim', price: null, size: null, unit: 'u.', sizeLabel: 'Feuilles par carnet' },
-    prd_classic: { label: 'Feuilles classiques', price: null, size: null, unit: 'u.', sizeLabel: 'Feuilles par carnet' },
-    prd_filter: { label: 'Filtres', price: null, size: null, unit: 'u.', sizeLabel: 'Filtres par paquet' },
-  };
+  const before = emptyBefore();
   let observation = 14;
   const root = h('div', { class: 'onboarding' });
 
   const finish = async () => {
     const today = dayKey();
-    for (const [productId, p] of Object.entries(prices)) {
-      if (isNum(p.price) && isNum(p.size) && p.size > 0) {
-        await save('purchases', { id: uid('pur'), productId, date: today, packPrice: p.price, packSize: p.size, packCount: 1, supplier: '', note: 'Saisi à l’accueil', addToStock: false });
-      }
-    }
     await saveSettings({
       onboarded: true,
       trackingStart: today,
       observation: observation ? { enabled: true, startDate: today, days: observation } : { enabled: false, startDate: null, days: 14 },
     });
+    if (beforeMonthly(before)) {
+      before.startDate = today;
+      await applyBeforePrices(before);
+      await saveSettings({ before });
+    }
     onDone();
   };
 
@@ -46,16 +41,21 @@ export function renderOnboarding(onDone) {
         h('li', null, icon('check', 16), 'Tes données restent sur ton appareil. Aucune publicité, aucun traceur.')),
       h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => next() }, 'Commencer'),
       h('button', { class: 'btn btn-ghost btn-block', onclick: async () => { await switchMode('demo'); toast('Mode démo : données fictives séparées'); } }, icon('demo', 16), 'Explorer la démo d’abord')),
-    () => h('div', { class: 'ob-step' },
-      h('h2', null, 'Tes prix réels'),
-      h('p', { class: 'muted' }, 'Ils servent à calculer le coût exact de chaque consommation. Tout est facultatif et modifiable plus tard (Réglages › Produits).'),
-      ...Object.values(prices).map((p) => h('div', { class: 'ob-price' },
-        h('span', { class: 'ob-price-label' }, p.label),
-        h('div', { class: 'grid-2' },
-          field('Prix', decimalInput({ value: p.price, unit: '€', stepper: false, onchange: (v) => { p.price = v; } })),
-          field(p.sizeLabel, decimalInput({ value: p.size, unit: p.unit, stepper: false, onchange: (v) => { p.size = v; } }))))),
-      h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => next() }, 'Continuer'),
-      h('button', { class: 'btn btn-ghost btn-block', onclick: () => next() }, 'Plus tard')),
+    () => {
+      const totalEl = h('p', { class: 'before-total' });
+      const refresh = () => {
+        const m = beforeMonthly(before);
+        fill(totalEl, m ? [h('span', null, 'Tu dépensais environ'), h('b', null, `${fmtMoney(m.total, { digits: 0 })} / mois`)] : [h('span', { class: 'muted' }, 'Une estimation suffit.')]);
+      };
+      refresh();
+      return h('div', { class: 'ob-step' },
+        h('h2', null, 'Avant l’app'),
+        h('p', { class: 'muted' }, 'Combien achetais-tu chaque mois, à peu près ? Tu verras tes économies dès le premier jour, et ces prix servent à calculer le coût de chaque consommation.'),
+        beforeFields(before, refresh),
+        totalEl,
+        h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => next() }, 'Continuer'),
+        h('button', { class: 'btn btn-ghost btn-block', onclick: () => next() }, 'Plus tard'));
+    },
     () => h('div', { class: 'ob-step' },
       h('h2', null, 'D’abord, observer'),
       h('p', { class: 'muted' }, 'Pendant quelques jours, enregistre simplement tes consommations, envies, dépenses et nuits, sans objectif. L’application établira ensuite ta référence personnelle.'),

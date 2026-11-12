@@ -15,6 +15,7 @@ import { sleepStats, computeNight, sleepPairs, pearson, describeCorrelation, sle
 import { dailyCostProfile, scenarios } from '../domain/simulator.js';
 import { generateInsights } from '../domain/insights.js';
 import { renderGoals } from './goals.js';
+import { beforeMoneyCard } from './before.js';
 
 const TABS = [
   { id: 'conso', label: 'Conso' },
@@ -111,8 +112,9 @@ function money() {
   const sc = scenarios(profile);
   const chosen = sc.find((x) => x.id === ui.sim) || sc[2];
   return h('div', { class: 'stack' },
+    beforeMoneyCard(),
     card(h('div', { class: 'big-row' },
-      big(fmtMoney(s.cost.total, { digits: 0 }), `sur ${d} jours`),
+      big(fmtMoney(s.cost.total, { digits: 0 }), `sur ${d} jour${d > 1 ? 's' : ''}`),
       big(fmtMoney(perDay), 'par jour'),
       big(fmtMoney(perDay * 30, { digits: 0 }), 'par mois')),
     s.cost.incomplete ? h('p', { class: 'hint' }, 'Certains prix manquent : ajoute tes paquets avec leur prix pour un total exact.') : null),

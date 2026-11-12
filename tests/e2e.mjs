@@ -21,9 +21,11 @@ const sleep = (ms) => page.waitForTimeout(ms);
 await page.goto(`${URL_BASE}/`);
 await page.waitForTimeout(600);
 await page.click('text=Commencer');
-const inputs = page.locator('.ob-price input');
-const vals = ['15', '30', '50', '10', '1,6', '32', '1', '50', '1,2', '120'];
+// « Avant l'app » : 4 paquets de 30 g à 15 €, 10 g de CBD à 5 €/g par mois
+const inputs = page.locator('.ob-step .num-input');
+const vals = ['4', '15', '30', '10', '5'];
 for (let i = 0; i < vals.length; i++) await fillNum(inputs.nth(i), vals[i]);
+ok(/110\s*€\s*\/\s*mois/.test(await page.locator('.before-total').innerText()), 'S13 dépense avant l’app : 4 × 15 € + 10 × 5 € = 110 € / mois');
 await page.click('text=Continuer');
 await page.click('text=14 jours');
 await page.click('text=C’est parti');
@@ -41,7 +43,7 @@ await fillNum(nums.nth(0), '0,22');
 await s.locator('.segmented button:has-text("Pesée")').nth(1).click();
 await fillNum(nums.nth(1), '0,16');
 const cost = await s.locator('.cost-preview b').innerText();
-ok(cost.replace(/\s/g, '') === '≈0,97€', `S1 coût du joint = ${cost} (attendu 0,97 €)`);
+ok(cost.replace(/\s/g, '') === '≈0,91€', `S1 coût du joint = ${cost} (attendu 0,91 € : 0,11 tabac + 0,80 CBD, feuille/filtre sans prix)`);
 await s.locator('.sticky-actions button:has-text("Ajouter")').click();
 await page.waitForTimeout(500);
 // SCÉNARIO 2
@@ -51,7 +53,7 @@ s = sheet();
 ok(await s.locator('h4:has-text("CBD")').count() === 0, 'S2 aucune section CBD pour une roulée');
 await s.locator('.segmented button:has-text("Estimée")').first().click();
 await fillNum(s.locator('.num-input').first(), '0,25');
-ok((await s.locator('.cost-preview b').innerText()).replace(/\s/g, '') === '≈0,15€', 'S2 coût roulée 0,125+0,02 → 0,15 €');
+ok((await s.locator('.cost-preview b').innerText()).replace(/\s/g, '') === '≈0,13€', 'S2 coût roulée 0,25 g × 0,50 € → 0,13 €');
 await s.locator('.sticky-actions button:has-text("Ajouter")').click();
 await page.waitForTimeout(500);
 // SCÉNARIO 3
@@ -83,7 +85,9 @@ await s.locator('.sticky-actions button:has-text("Enregistrer")').first().click(
 await page.waitForTimeout(500);
 const tiles2 = await hero(page);
 ok(/0,55\s*g tabac/.test(tiles2), 'S7 tabac recalculé 0,55 g après modification');
-ok(tiles2.replace(/\s/g, '').includes('1,16€'), 'S7 dépense recalculée (attendu 1,16 €)');
+ok(tiles2.replace(/\s/g, '').includes('1,08€'), 'S7 dépense recalculée (attendu 0,95 + 0,13 = 1,08 €)');
+const sav = await page.locator('.savings').innerText();
+ok(/Économisé depuis le début/.test(sav) && /110\s*€\/mois/.test(sav), 'S13 économies affichées en direct par rapport à avant (110 €/mois)');
 // SCÉNARIO 8
 await page.goto(`${URL_BASE}/#/profile/data`);
 await page.waitForTimeout(400);
@@ -119,7 +123,7 @@ await p3.goto(`${URL_BASE}/`); await p3.waitForTimeout(500);
 await p3.click('text=Commencer'); await p3.waitForTimeout(300);
 await p3.click('button:has-text("Plus tard")'); await p3.waitForTimeout(300);
 await p3.click('text=C’est parti'); await p3.waitForTimeout(400);
-await p3.click('.pack-cta'); await p3.waitForTimeout(400);
+await p3.click('.pack-cta:has-text("Pas de balance")'); await p3.waitForTimeout(400);
 let sh = p3.locator('.sheet.open').last();
 await sh.locator('button:has-text("Déjà entamé")').click();
 await sh.locator('.chip:has-text("La moitié")').click();

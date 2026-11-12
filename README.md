@@ -36,6 +36,7 @@ Navigation : **Accueil · Journal · ＋ · Progrès · Réglages**.
 | **Journal** | Historique par jour, recherche, filtres, calendrier mensuel, détail d'une journée, modification, duplication, suppression avec annulation. |
 | **Progrès** | Conso, Argent (dont « Et si… je réduisais »), Envies, Sommeil, Objectifs — en phrases simples ; analyses détaillées à un geste. |
 | **Mes paquets** | Sans balance : paquets neufs ou entamés, « il en reste… » à l'œil, paquet terminé → grammes réels par joint et par roulée, de plus en plus précis. |
+| **Avant l'app** | Dépenses habituelles déclarées à peu près (paquets de tabac par mois et prix, grammes de CBD / molécule par mois et prix au gramme, feuilles & filtres) : économies visibles dès le premier jour, en direct, comparées aux vraies dépenses ; « avant / maintenant » par mois. Les prix déclarés complètent ceux des produits. |
 | **Projets d'épargne** | Partir au Canada, voyager, acheter quelque chose : budget par postes (+ marge d'imprévus), épargne déjà constituée, économies dues à la réduction calculées automatiquement, date estimée au rythme actuel, si je réduis de 25 / 50 % ou si j'arrête, réduction nécessaire pour une date visée. **Assistant IA facultatif** (Claude, clé API personnelle) qui propose un budget détaillé à partir d'une description. |
 | **Molécules** | CBD, 10-OH-HHC, HHC, HHC-P, Δ10, Δ8, H4-CBD, THC-P, CBN, CBG ou autre : suivies séparément, jamais assimilées au CBD ni au THC. |
 | **Apple Santé** | Import du sommeil (export complet ou Raccourci iOS). |

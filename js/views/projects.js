@@ -11,6 +11,7 @@ import { summarize } from '../domain/stats.js';
 import { PROJECT_TEMPLATES, templateOf, newProject, projectTotal, projectPlan } from '../domain/projects.js';
 import { uid } from '../domain/models.js';
 import { estimateProject, hasAiKey, getAiKey, setAiKey } from '../core/ai.js';
+import { beforePerDay } from './before.js';
 
 const projects = () => state.goals.filter((g) => g.kind === 'project').sort((a, b) => Number(b.active) - Number(a.active) || (a.createdAt < b.createdAt ? 1 : -1));
 
@@ -19,7 +20,7 @@ function costPerDay(days) {
   const s = summarize(state.entries, { start: addDays(today, -(days - 1)), end: today }, ctx);
   return s.coverage ? s.cost.total / s.coverage.days : null;
 }
-const refNow = () => state.settings.baseline?.costPerDay || costPerDay(30);
+const refNow = () => beforePerDay() || state.settings.baseline?.costPerDay || costPerDay(30);
 const planOf = (p) => projectPlan(p, { entries: state.entries, ctx: derived().ctx, currentPerDay: costPerDay(14), fallbackRef: refNow() });
 
 /** Fige la dépense de référence dès qu'elle est connue (prix renseignés). */
@@ -143,7 +144,7 @@ function addDeposit(p, closeDetail) {
 
 export function openProjectForm({ project: existing } = {}) {
   const editing = !!existing;
-  const ref = state.settings.baseline?.costPerDay ?? costPerDay(30);
+  const ref = refNow();
   let p = existing ? JSON.parse(JSON.stringify(existing)) : newProject('move', ref, dayKey());
   openSheet({
     title: editing ? 'Modifier le projet' : 'Nouveau projet',

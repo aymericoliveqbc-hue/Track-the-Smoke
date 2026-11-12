@@ -21,6 +21,8 @@ import { healthContent } from './health.js';
 import { renderAppleHealth } from './applehealth.js';
 import { renderPacks } from './packs.js';
 import { renderAiSettings } from './projects.js';
+import { openBeforeForm } from './before.js';
+import { beforeMonthly } from '../domain/before.js';
 import { hasAiKey } from '../core/ai.js';
 
 const rerender = () => window.dispatchEvent(new Event('tts:render'));
@@ -37,6 +39,7 @@ export function renderProfile(sub) {
       h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { await switchMode('main'); toast('Retour à tes données'); } }, 'Quitter')) : null,
     card(
       listRow({ icon: 'box', iconTone: 'green', title: 'Mes paquets', sub: state.packs.some((p) => !p.finishedAt) ? `${state.packs.filter((p) => !p.finishedAt).length} en cours · calcul automatique des grammes` : 'Calcul automatique des grammes, sans balance', onclick: () => go('packs') }),
+      listRow({ icon: 'wallet', title: 'Mes dépenses avant l\u2019app', sub: beforeMonthly(s.before) ? `≈ ${fmtMoney(beforeMonthly(s.before).total, { digits: 0 })} par mois` : 'Pour mesurer tes économies dès maintenant', onclick: openBeforeForm }),
       listRow({ icon: 'tag', title: 'Produits et prix', sub: `${state.products.filter((p) => !p.archived).length} produits`, onclick: () => go('products') }),
       listRow({ icon: 'wallet', iconTone: 'orange', title: 'Achats', sub: `${state.purchases.length} achat(s) enregistré(s)`, onclick: () => go('purchases') }),
       listRow({ icon: 'box', iconTone: 'green', title: 'Stocks', sub: s.stock?.enabled ? 'Suivi activé' : 'Facultatif · désactivé', onclick: () => go('stock') }),

@@ -723,3 +723,20 @@ body { background: var(--bg); }
 .budget-total { color: var(--text-2); font-size: 14px; }
 .budget-total b { color: var(--text); }
 .add-tile.tile-on { box-shadow: inset 0 0 0 2px var(--primary); }
+
+/* Économies par rapport à « avant l'app » */
+.savings { display: flex; flex-direction: column; gap: 8px; width: 100%; text-align: left; background: var(--card); border-radius: 22px; box-shadow: var(--shadow); padding: 16px 18px; }
+.savings:active { transform: scale(.99); }
+.savings-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.savings-label { font-size: 14px; font-weight: 600; color: var(--text-2); }
+.savings-num { font-size: 34px; font-weight: 700; letter-spacing: -0.03em; color: var(--primary); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.savings-num.neutral { color: var(--text); }
+.savings-compare { display: flex; align-items: center; gap: 10px; }
+.savings-compare > div { display: flex; flex-direction: column; }
+.savings-compare span { font-size: 12px; color: var(--text-2); }
+.savings-compare b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.savings-compare .icon { color: var(--text-3); }
+.savings-pct { margin-left: auto; background: var(--primary-soft); color: var(--primary); font-weight: 700; font-size: 13px; padding: 4px 10px; border-radius: 999px; }
+.savings-warn { font-size: 12px; color: var(--c3); }
+.before-total { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px; text-align: center; }
+.before-total b { font-size: 26px; color: var(--primary); letter-spacing: -0.02em; }

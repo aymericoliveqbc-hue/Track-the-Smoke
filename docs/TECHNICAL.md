@@ -127,6 +127,8 @@ Rappels configurables (journal, nuit, bilan hebdomadaire, objectifs, bilan finan
 
 **Assistant IA** (`js/core/ai.js`) : facultatif. Requête HTTP directe (application sans dépendance ni build) vers `POST https://api.anthropic.com/v1/messages` avec la clé de l'utilisateur (`localStorage`, exclue des sauvegardes), en-têtes `anthropic-version: 2026-10-21` et `anthropic-dangerous-direct-browser-access: true`, modèle `claude-opus-5-5`, `output_config.effort: "low"`, sortie JSON contrainte par `output_config.format` (`json_schema`), repli automatique en cas de refus (`server-side-fallback-2026-07-01`, `fallbacks: "default"`), contrôle de `stop_reason`. Seuls le type, le nom et la description du projet sont envoyés. CSP : `connect-src 'self' https://api.anthropic.com`.
 
+**Avant l'app** (`js/domain/before.js`, `settings.before`) : budget mensuel = paquets × prix + grammes × prix/g + accessoires ; économies = (budget / 30,44) × jours écoulés (journée en cours au prorata de l'heure) − dépenses réelles. Feuilles et filtres ne sont comparés que si leur prix est connu (sinon retirés des deux côtés) ; l'économie est signalée surestimée si le prix du tabac ou du CBD manque. Rythme « maintenant » = 14 derniers jours ; pourcentage et projection annuelle affichés seulement après 3 jours. Les prix déclarés servent de tarif de référence aux produits qui n'en ont pas. Les projets utilisent ce budget comme référence s'il existe.
+
 ## 8. Apple Santé
 
 Une PWA n'a pas accès à HealthKit (réservé aux apps natives). Deux voies locales, sans serveur :
@@ -142,7 +144,7 @@ SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de cha
 
 ## 10. Tests
 
-`npm test` — 46 tests unitaires couvrant notamment : analyse des décimales FR, arithmétique de dates (DST, années bissextiles), prix au gramme, historique de prix, coûts complets/incomplets, non-double comptage des accessoires, unités CBD incompatibles, séparation pesé/estimé, absence de zéros fictifs, analyse des joints (n), corrélations, import Apple Santé (lecture XML en flux, dates FR, nuits, fusion sans écrasement), quantités automatiques (paquet terminé = somme exacte, paquet entamé, repères, saisies manuelles déduites, repère incohérent ignoré), simulateur, référence/paliers/parcours sans remise à zéro, stocks, export/import, CSV, données de démo.
+`npm test` — 49 tests unitaires couvrant notamment : analyse des décimales FR, arithmétique de dates (DST, années bissextiles), prix au gramme, historique de prix, coûts complets/incomplets, non-double comptage des accessoires, unités CBD incompatibles, séparation pesé/estimé, absence de zéros fictifs, analyse des joints (n), corrélations, import Apple Santé (lecture XML en flux, dates FR, nuits, fusion sans écrasement), quantités automatiques (paquet terminé = somme exacte, paquet entamé, repères, saisies manuelles déduites, repère incohérent ignoré), simulateur, référence/paliers/parcours sans remise à zéro, stocks, export/import, CSV, données de démo.
 
 `npm run e2e` — rejoue dans Chromium (iPhone 14) les scénarios de validation :
 
