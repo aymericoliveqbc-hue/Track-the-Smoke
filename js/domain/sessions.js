@@ -15,6 +15,18 @@ export function runningSessions(entries) {
   return entries.filter(isRunning).sort((a, b) => (a.at < b.at ? -1 : 1));
 }
 
+/**
+ * Sessions en cours depuis au moins `reminderMin` minutes (rappel de fin,
+ * session probablement oubliée). reminderMin <= 0 : rappel désactivé.
+ */
+export function overdueSessions(entries, now, reminderMin) {
+  if (!(reminderMin > 0)) return [];
+  return runningSessions(entries).filter((e) => {
+    const m = minutesBetween(e.at, now);
+    return m != null && m >= reminderMin;
+  });
+}
+
 /** Session en cours « identique » (même méthode et même produit). */
 export function duplicateRunning(entries, categoryId, productId = null) {
   return entries.find((e) => isRunning(e) && e.categoryId === categoryId && (productId == null || productIdOf(e) === productId)) || null;

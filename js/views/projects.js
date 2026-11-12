@@ -13,6 +13,7 @@ import { beforeMonthly, beforeSavings } from '../domain/before.js';
 import { uid } from '../domain/models.js';
 import { estimateProject, hasAiKey, getAiKey, setAiKey } from '../core/ai.js';
 import { beforePerDay } from './before.js';
+import { consentSettingsCard } from './analysis.js';
 
 const projects = () => state.goals.filter((g) => g.kind === 'project').sort((a, b) => Number(b.active) - Number(a.active) || (a.createdAt < b.createdAt ? 1 : -1));
 
@@ -243,15 +244,16 @@ export function renderAiSettings(backHeader) {
   let value = '';
   const status = h('p', { class: 'muted' }, hasAiKey() ? `Clé enregistrée (…${getAiKey().slice(-4)}).` : 'Aucune clé enregistrée.');
   return h('div', { class: 'stack' }, backHeader,
-    card(h('div', { class: 'ai-box flat' }, icon('sparkle', 20), h('div', null, h('b', null, 'Estimer tes projets avec Claude'),
-      h('span', { class: 'muted small' }, 'L’assistant propose un budget détaillé pour un voyage, un déménagement, un achat… Tu gardes la main sur chaque montant.')))),
+    card(h('div', { class: 'ai-box flat' }, icon('sparkle', 20), h('div', null, h('b', null, 'Assistant Claude, facultatif'),
+      h('span', { class: 'muted small' }, 'Estimer le budget d’un projet, ou analyser une période dans Progrès. Tu gardes la main sur tout.')))),
     card(
       field('Clé API Anthropic', textInput({ type: 'password', placeholder: 'sk-ant-…', autocomplete: 'off', oninput: (v) => { value = v; } })),
       status,
       h('div', { class: 'row-actions' },
         h('button', { class: 'btn btn-primary', onclick: () => { if (!value.trim().startsWith('sk-')) { toast('Clé invalide', { tone: 'warn' }); return; } setAiKey(value); toast('Clé enregistrée sur cet appareil'); window.dispatchEvent(new Event('tts:render')); } }, 'Enregistrer'),
         hasAiKey() ? h('button', { class: 'btn btn-ghost', onclick: () => { setAiKey(''); toast('Clé supprimée'); window.dispatchEvent(new Event('tts:render')); } }, 'Supprimer la clé') : null)),
-    note('Ta clé reste uniquement sur ce téléphone et n’est jamais incluse dans les sauvegardes. Seuls le nom et la description du projet sont envoyés à Anthropic, jamais tes données de consommation ou de sommeil. Chaque estimation coûte quelques centimes sur ton compte API.', 'info'),
+    hasAiKey() ? consentSettingsCard() : null,
+    note('Ta clé reste uniquement sur ce téléphone et n’est jamais incluse dans les sauvegardes. Pour un projet, seuls son nom et sa description sont envoyés. Pour une analyse, seulement des totaux agrégés, après ton accord et à ta demande. Chaque appel coûte quelques centimes sur ton compte API.', 'info'),
     h('p', { class: 'hint' }, 'Crée une clé sur console.anthropic.com (compte API, distinct d’un abonnement Claude). Sans clé, les projets fonctionnent quand même : tu saisis toi-même les montants.'));
 }
 

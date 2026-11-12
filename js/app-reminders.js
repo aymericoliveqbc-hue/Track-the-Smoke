@@ -7,7 +7,9 @@
 // serveur, aucun envoi de données.
 
 import { state } from './core/store.js';
-import { dayKey, addDays, hm, weekday, diffDays } from './core/dates.js';
+import { dayKey, addDays, hm, weekday, diffDays, nowLocal, minutesBetween, formatElapsed } from './core/dates.js';
+import { overdueSessions } from './domain/sessions.js';
+import { openFinishSheet } from './ui/record.js';
 import { openNightForm, openQuickAdd } from './ui/forms.js';
 
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
@@ -22,6 +24,16 @@ function computeReminders(n) {
   const out = [];
   const today = dayKey();
   const m = nowMin();
+  // Fin de session : une seule fois par session, l'utilisateur garde la main.
+  const now = nowLocal();
+  for (const e of overdueSessions(state.entries, now, state.settings.sessions?.reminderMin ?? 30)) {
+    const cat = state.categories.find((c) => c.id === e.categoryId);
+    out.push({
+      id: `session-${e.id}`, icon: 'timer', title: 'Session en cours',
+      text: `${cat?.short || cat?.name || 'Ta session'} en cours depuis ${formatElapsed(minutesBetween(e.at, now))}. Terminée ? Tu peux indiquer l’heure de fin.`,
+      action: () => openFinishSheet(e.id),
+    });
+  }
   if (n.sleep?.on && m >= (hm(n.sleep.time) ?? 0) && m < 20 * 60) {
     const night = state.nights.find((x) => x.date === addDays(today, -1));
     if (!night && state.entries.length) {

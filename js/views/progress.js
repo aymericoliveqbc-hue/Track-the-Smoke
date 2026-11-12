@@ -1,6 +1,7 @@
 // PROGRÈS — analyses universelles, adaptées aux méthodes réellement utilisées.
 
 import { h } from '../ui/dom.js';
+import { analysisCard } from './analysis.js';
 import { icon } from '../ui/icons.js';
 import { card, segmented, emptyState, note, select, chips } from '../ui/components.js';
 import { barChart, stackedBars, lineChart, splitBar, ring, COLORS } from '../ui/charts.js';
@@ -46,6 +47,7 @@ export function renderProgress(tab = 'conso') {
   root.append(periodPicker());
   const fn = { conso, money, sessions, cravings, sleep, products }[tab] || conso;
   root.append(fn());
+  if (tab !== 'products') { const ai = analysisCard(range()); if (ai) root.append(ai); }
   if (['conso', 'money', 'cravings'].includes(tab)) root.append(h('a', { class: 'more-link', href: '#/stats/overview' }, 'Analyses détaillées', icon('chevron', 14)));
   return root;
 }

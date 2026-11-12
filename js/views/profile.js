@@ -48,7 +48,7 @@ export function renderProfile(sub) {
       listRow({ icon: 'wallet', iconTone: 'orange', title: 'Achats', sub: `${state.purchases.length} achat(s) enregistré(s)`, onclick: () => go('purchases') }),
       listRow({ icon: 'box', iconTone: 'green', title: 'Stocks', sub: s.stock?.enabled ? 'Suivi activé' : 'Facultatif · désactivé', onclick: () => go('stock') }),
       listRow({ icon: 'custom', iconTone: 'blue', title: 'Catégories', sub: `${state.categories.filter((c) => !c.archived).length} catégories`, onclick: () => go('categories') })),
-    card(listRow({ icon: 'sparkle', title: 'Assistant IA', sub: hasAiKey() ? 'Activé · estimation des projets' : 'Facultatif · estimer le budget de tes projets', onclick: () => go('ai') }),
+    card(listRow({ icon: 'sparkle', title: 'Assistant IA', sub: hasAiKey() ? 'Activé · projets et analyses' : 'Facultatif · budgets de projets, analyses', onclick: () => go('ai') }),
       listRow({ icon: 'heart', iconTone: 'orange', title: 'Apple Santé', sub: s.health?.lastImportAt ? `Sommeil importé le ${formatDayShort(s.health.lastImportAt.slice(0, 10))}` : 'Importer ton sommeil depuis l\u2019iPhone', onclick: () => go('applehealth') })),
     card(
       listRow({ icon: 'bell', title: 'Rappels et notifications', sub: s.notifications.inApp ? 'Rappels discrets activés' : 'Désactivés', onclick: () => go('notifications') }),
@@ -198,6 +198,10 @@ function notifications() {
       row('weekly', 'Bilan hebdomadaire', h('div', { class: 'grid-2' }, select(['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((l, i) => ({ id: String(i), label: l })), String(n.weekly.weekday), (v) => set({ weekly: { ...n.weekly, weekday: Number(v) } })), timeIn('weekly'))),
       row('goals', 'Suivi des objectifs', timeIn('goals')),
       row('monthly', 'Bilan financier mensuel')),
+    card(h('h3', null, 'Fin de session'),
+      h('p', { class: 'hint' }, 'Pour une vape, une chicha ou une pipe chronométrée : un rappel si une session est encore en cours, au cas où tu aurais oublié de la terminer.'),
+      segmented([{ id: '0', label: 'Jamais' }, { id: '15', label: '15 min' }, { id: '30', label: '30 min' }, { id: '60', label: '1 h' }, { id: '120', label: '2 h' }],
+        String(state.settings.sessions?.reminderMin ?? 30), (v) => saveSettings({ sessions: { reminderMin: Number(v) } }))),
     card(toggle(!!n.enabled, async (on) => {
       if (on && supported && Notification.permission !== 'granted') {
         const p = await Notification.requestPermission();
