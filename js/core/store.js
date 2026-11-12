@@ -10,11 +10,12 @@ import { trackingStartOf } from '../domain/stats.js';
 import { computeBaseline, observationStatus } from '../domain/goals.js';
 import { buildDemoData } from '../domain/demo.js';
 import { STORES } from '../domain/backup.js';
+import { calibrate, autoUpdates } from '../domain/autoqty.js';
 
 export const state = {
   mode: 'main',
   settings: defaultSettings(),
-  entries: [], nights: [], products: [], purchases: [], inventories: [], categories: [], goals: [],
+  entries: [], nights: [], products: [], purchases: [], inventories: [], categories: [], goals: [], packs: [],
 };
 
 let db = null;
@@ -23,7 +24,7 @@ let cache = null;
 const listeners = new Set();
 
 export const subscribe = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
-function emit(reason) { version += 1; cache = null; for (const fn of listeners) fn(reason); }
+function emit(reason) { version += 1; cache = null; calibration = null; for (const fn of listeners) fn(reason); }
 
 const MODE_KEY = 'tts-mode';
 export const isDemo = () => state.mode === 'demo';
@@ -59,6 +60,8 @@ function ensureDefaults() {
   }
   state.settings.schema = SCHEMA_VERSION;
   // Nouvelle charte naturelle : passage unique au thème clair « Sable ».
+  // Sans balance par défaut : estimation automatique (passage unique).
+  if (!state.settings.autoV1) { state.settings.defaultMethod = 'auto'; state.settings.autoV1 = true; }
   if (!state.settings.themeV2) { state.settings.theme = 'light'; state.settings.themeV2 = true; }
 }
 
@@ -91,13 +94,32 @@ export async function save(store, obj) {
   const i = list.findIndex((x) => x.id === obj.id);
   if (i >= 0) list[i] = obj; else list.push(obj);
   await db.put(store, obj);
+  if (store === 'entries' || store === 'packs') await recalibrate();
   emit(store);
   return obj;
 }
 
+/**
+ * Recalcule les quantités « auto » de tout l'historique à partir des
+ * paquets déclarés. Écrit directement les entrées modifiées.
+ */
+export async function recalibrate() {
+  const cal = calibrate(state.entries, state.packs, state.settings);
+  calibration = cal;
+  const changed = autoUpdates(state.entries, cal);
+  if (!changed.length) return 0;
+  const byId = new Map(changed.map((e) => [e.id, e]));
+  state.entries = state.entries.map((e) => byId.get(e.id) || e);
+  for (const e of changed) await db.put('entries', e);
+  return changed.length;
+}
+let calibration = null;
+export const currentCalibration = () => calibration || (calibration = calibrate(state.entries, state.packs, state.settings));
+
 export async function remove(store, id) {
   state[store] = state[store].filter((x) => x.id !== id);
   await db.delete(store, id);
+  if (store === 'entries' || store === 'packs') await recalibrate();
   emit(store);
 }
 
@@ -105,6 +127,7 @@ export async function saveSettings(patch) {
   state.settings = deepMerge(state.settings, patch);
   setCurrency(state.settings.currency);
   await db.put('meta', state.settings);
+  if (patch.autoPriors || patch.defaultProducts) await recalibrate();
   emit('settings');
 }
 

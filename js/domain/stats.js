@@ -41,7 +41,7 @@ export function entriesIn(entries, range) {
 }
 
 function qtyAgg() {
-  return { total: 0, weighed: 0, estimated: 0, unknownMethod: 0, missing: 0, lines: 0 };
+  return { total: 0, weighed: 0, estimated: 0, auto: 0, unknownMethod: 0, missing: 0, lines: 0 };
 }
 
 function addQty(agg, value, method, filter) {
@@ -51,6 +51,7 @@ function addQty(agg, value, method, filter) {
   agg.total += value;
   if (method === 'weighed') agg.weighed += value;
   else if (method === 'estimated') agg.estimated += value;
+  else if (method === 'auto') agg.auto += value;
   else agg.unknownMethod += value;
 }
 
@@ -59,7 +60,7 @@ function addQty(agg, value, method, filter) {
  * @param entries toutes les entrées
  * @param range {start, end}
  * @param ctx { cost(entry), trackingStart, today }
- * @param opts { method: 'all'|'weighed'|'estimated' }
+ * @param opts { method: 'all'|'weighed'|'estimated'|'auto' }
  */
 export function summarize(entries, range, ctx, opts = {}) {
   const method = opts.method || 'all';

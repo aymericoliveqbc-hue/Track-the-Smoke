@@ -171,7 +171,9 @@ export function defaultSettings() {
       slim: 'prd_slim', classic: 'prd_classic', filter: 'prd_filter', other: null,
     },
     quickDefaults: {}, // dernières valeurs par catégorie
-    defaultMethod: 'estimated',
+    defaultMethod: 'auto', // pas de balance : estimation automatique
+    autoV1: true,
+    autoPriors: {},
     observation: { enabled: false, startDate: null, days: 14 },
     baseline: null,
     journeys: {
@@ -212,11 +214,12 @@ export function defaultSettings() {
  *   durationMin, situation, emotion, note, outcome:'resisted'|'consumed',
  *   consumptionId, createdAt, updatedAt }
  *
- * method : 'weighed' (pesée) | 'estimated' (estimation) | null (inconnue)
+ * method : 'auto' (calculée depuis les paquets) | 'weighed' (pesée) | 'estimated' (estimation) | null
  */
 export const METHODS = [
+  { id: 'auto', label: 'Auto', hint: 'Calculée par l\u2019app à partir de tes paquets' },
+  { id: 'estimated', label: 'Estimée', hint: 'Quantité approximative saisie' },
   { id: 'weighed', label: 'Pesée', hint: 'Balance de précision' },
-  { id: 'estimated', label: 'Estimation', hint: 'Quantité approximative' },
 ];
 
 /** Normalise une liste d'accessoires : une seule ligne par type/produit. */

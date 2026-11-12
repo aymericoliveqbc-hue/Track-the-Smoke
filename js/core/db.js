@@ -3,8 +3,8 @@
 
 export const DB_MAIN = 'track-the-smoke';
 export const DB_DEMO = 'track-the-smoke-demo';
-const VERSION = 1;
-export const STORE_NAMES = ['meta', 'entries', 'nights', 'products', 'purchases', 'inventories', 'categories', 'goals', 'backups'];
+const VERSION = 2; // v2 : store « packs »
+export const STORE_NAMES = ['meta', 'packs', 'entries', 'nights', 'products', 'purchases', 'inventories', 'categories', 'goals', 'backups'];
 
 const reqP = (req) => new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
 const txDone = (tx) => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); });

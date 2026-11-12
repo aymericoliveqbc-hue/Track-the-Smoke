@@ -2,7 +2,7 @@
 // Stratégie « cache d'abord » pour l'application (aucune donnée personnelle
 // n'est mise en cache ici : elles vivent dans IndexedDB).
 
-const VERSION = 'tts-v1.1.0';
+const VERSION = 'tts-v1.2.0';
 const ASSETS = [
   './',
   './index.html',
@@ -21,6 +21,7 @@ const ASSETS = [
   './js/core/healthfile.js',
   './js/core/lock.js',
   './js/core/store.js',
+  './js/domain/autoqty.js',
   './js/domain/backup.js',
   './js/domain/costs.js',
   './js/domain/cravings.js',
@@ -45,6 +46,7 @@ const ASSETS = [
   './js/views/home.js',
   './js/views/journal.js',
   './js/views/onboarding.js',
+  './js/views/packs.js',
   './js/views/profile.js',
   './js/views/stats.js',
 ];

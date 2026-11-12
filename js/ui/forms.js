@@ -7,7 +7,8 @@ import { icon } from './icons.js';
 import {
   openSheet, toast, confirmDialog, field, textInput, textArea, decimalInput, segmented, chips, toggle, scale, select, note, badge,
 } from './components.js';
-import { state, save, remove, saveSettings, derived, catById, productById } from '../core/store.js';
+import { state, save, remove, saveSettings, derived, catById, productById, currentCalibration } from '../core/store.js';
+import { autoEstimate, precisionLabel } from '../domain/autoqty.js';
 import { nowLocal, dayKey, addDays, formatDuration, hm, timeKey, isTime } from '../core/dates.js';
 import { fmtGrams, fmtMoney, fmtQty, isNum, round2, UNITS, fmtNum, parseDecimal, toInput } from '../core/format.js';
 import {
@@ -56,8 +57,11 @@ export function openQuickAdd() {
 
 function quickSummary(cat, last) {
   const parts = [];
-  if (cat.tobacco && last.tobacco) parts.push(`${isNum(last.tobacco.grams) ? fmtGrams(last.tobacco.grams) : '?'} tabac`);
-  if (cat.cbd && last.cbd) parts.push(`${isNum(last.cbd.amount) ? fmtQty(last.cbd.amount, last.cbd.unit) : '?'} CBD`);
+  const f = currentCalibration().factors;
+  const tg = last.tobacco?.method === 'auto' ? autoEstimate(cat.id, 'tobacco', state.settings, f) : last.tobacco?.grams;
+  const cg = last.cbd?.method === 'auto' && (last.cbd.unit || 'g') === 'g' ? autoEstimate(cat.id, 'cbd', state.settings, f) : last.cbd?.amount;
+  if (cat.tobacco && last.tobacco) parts.push(`${isNum(tg) ? (last.tobacco.method === 'auto' ? '≈ ' : '') + fmtGrams(tg) : '?'} tabac`);
+  if (cat.cbd && last.cbd) parts.push(`${isNum(cg) ? (last.cbd.method === 'auto' ? '≈ ' : '') + fmtQty(cg, last.cbd.unit) : '?'} CBD`);
   if (!cat.system && isNum(last.quantity?.amount)) parts.push(`${fmtNum(last.quantity.amount)} ${cat.unitLabel || ''}`);
   return parts.join(' · ') || 'Dernières valeurs';
 }
@@ -85,6 +89,11 @@ function buildEntry(cat, base = {}) {
     context: base.context || null, mood: null, mode: base.mode || null, note: '', custom: {},
     cravingId: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
+  // Quantités « auto » : toujours recalculées avec la calibration actuelle.
+  const factors = currentCalibration().factors;
+  if (e.tobacco?.method === 'auto') e.tobacco.grams = autoEstimate(cat.id, 'tobacco', state.settings, factors);
+  if (e.cbd?.method === 'auto') e.cbd.amount = (e.cbd.unit || 'g') === 'g' ? autoEstimate(cat.id, 'cbd', state.settings, factors) : null;
+  if (e.cbd?.method === 'auto' && e.cbd.amount == null) e.cbd.method = 'estimated';
   return e;
 }
 
@@ -212,20 +221,49 @@ function quickFill(stats, inputEl, unit = 'g') {
   return b.length ? h('div', { class: 'chips chips-sm' }, b) : null;
 }
 
-function methodToggle(obj) {
-  return segmented(METHODS.map((m) => ({ id: m.id, label: m.label })), obj.method || 'estimated', (v) => { obj.method = v; }, { small: true });
+function methodToggle(obj, onchange, allowAuto = true) {
+  const opts = METHODS.filter((m) => allowAuto || m.id !== 'auto').map((m) => ({ id: m.id, label: m.label }));
+  return segmented(opts, obj.method || 'estimated', (v) => { obj.method = v; onchange?.(v); }, { small: true });
+}
+
+/** Quantité calculée automatiquement (paquets) ou saisie à la main. */
+function quantityArea(entry, obj, key, cat, substance, unit, inputOpts) {
+  const wrap = h('div', { class: 'stack-sm' });
+  const canAuto = unit === 'g' && autoEstimate(cat.id, substance, state.settings, {}) != null;
+  wrap.render = () => {
+    if (obj.method === 'auto' && canAuto) {
+      const cal = currentCalibration();
+      if (!isNum(obj[key])) obj[key] = autoEstimate(cat.id, substance, state.settings, cal.factors);
+      const p = precisionLabel(cal.calibrations[substance]);
+      fill(wrap, h('div', { class: 'auto-qty' },
+        h('span', { class: 'auto-icon' }, icon('sparkle', 16)),
+        h('div', { class: 'grow' }, h('b', null, `≈ ${fmtGrams(obj[key])}`), h('span', { class: 'muted small' }, p.label)),
+        h('span', { class: `precision p${p.level}` }, h('i'), h('i'), h('i'))),
+      h('p', { class: 'hint' }, p.level < 1 ? 'Valeur générique. Déclare ton paquet en cours (Profil › Mes paquets) : l\u2019app apprendra tes vraies quantités.' : 'Calculé d\u2019après tes paquets. Se met à jour tout seul à chaque repère.'));
+    } else {
+      if (obj.method === 'auto') obj.method = 'estimated';
+      const input = decimalInput({ value: obj[key], unit: UNITS[unit].short, ...inputOpts, onchange: (v) => { obj[key] = v; refreshCost(); } });
+      fill(wrap, input, quickFill(recentStats(cat.id, (e) => (substance === 'cbd' && e.cbd?.unit !== unit ? null : (substance === 'tobacco' ? e.tobacco?.grams : e.cbd?.amount)), entry.id), input, unit));
+    }
+    refreshCost();
+  };
+  wrap.onMethod = (v) => {
+    if (v === 'auto') obj[key] = autoEstimate(cat.id, substance, state.settings, currentCalibration().factors);
+    wrap.render();
+  };
+  wrap.canAuto = canAuto;
+  wrap.render();
+  return wrap;
 }
 
 function tobaccoSection(entry, cat) {
   const t = entry.tobacco;
-  const input = decimalInput({ value: t.grams, unit: 'g', label: 'Tabac en grammes', onchange: (v) => { t.grams = v; refreshCost(); } });
+  const area = quantityArea(entry, t, 'grams', cat, 'tobacco', 'g', { label: 'Tabac en grammes' });
   const prods = productsOf('tobacco');
   return h('div', { class: 'form-block' },
-    h('div', { class: 'block-head' }, h('span', { class: 'dot dot-blue' }), h('h4', null, 'Tabac'), methodToggle(t)),
-    input,
-    quickFill(recentStats(cat.id, (e) => e.tobacco?.grams, entry.id), input),
-    prods.length > 1 ? field('Produit', select(prods.map((p) => ({ id: p.id, label: p.name })), t.productId, (v) => { t.productId = v; refreshCost(); })) : null,
-    h('p', { class: 'hint' }, 'Laisse vide si tu ne connais pas la quantité : rien ne sera inventé.'));
+    h('div', { class: 'block-head' }, h('span', { class: 'dot dot-blue' }), h('h4', null, 'Tabac'), methodToggle(t, area.onMethod, area.canAuto)),
+    area,
+    prods.length > 1 ? field('Produit', select(prods.map((p) => ({ id: p.id, label: p.name })), t.productId, (v) => { t.productId = v; refreshCost(); })) : null);
 }
 
 function cbdSection(entry, cat) {
@@ -237,18 +275,17 @@ function cbdSection(entry, cat) {
     const prods = productsOf('cbd', (p) => !c.form || p.cbdForm === c.form || (!p.cbdForm));
     const unitOptions = isJoint ? ['g'] : (c.form === 'oil' ? ['drop', 'ml'] : c.form === 'other' ? ['unit', 'g', 'ml'] : ['g']);
     if (!unitOptions.includes(c.unit)) c.unit = unitOptions[0];
-    const input = decimalInput({ value: c.amount, unit: UNITS[c.unit].short, step: c.unit === 'drop' || c.unit === 'unit' ? 1 : 0.01, label: 'Quantité de CBD', onchange: (v) => { c.amount = v; refreshCost(); } });
-    fill(block, 
-      h('div', { class: 'block-head' }, h('span', { class: 'dot dot-green' }), h('h4', null, 'CBD'), methodToggle(c)),
+    const area = quantityArea(entry, c, 'amount', cat, 'cbd', c.unit, { step: c.unit === 'drop' || c.unit === 'unit' ? 1 : 0.01, label: 'Quantité de CBD' });
+    fill(block,
+      h('div', { class: 'block-head' }, h('span', { class: 'dot dot-green' }), h('h4', null, 'CBD'), methodToggle(c, area.onMethod, area.canAuto)),
       field(isJoint ? 'Type de CBD' : 'Produit consommé', chips(forms.map((f) => ({ id: f.id, label: f.label })), c.form, (v) => {
         c.form = v || forms[0].id;
         const match = productsOf('cbd', (p) => p.cbdForm === c.form)[0];
         if (match) { c.productId = match.id; c.unit = match.unit; }
         render(); refreshCost();
       }, { allowNone: false })),
-      input,
+      area,
       unitOptions.length > 1 ? field('Unité', segmented(unitOptions.map((u) => ({ id: u, label: UNITS[u].label })), c.unit, (v) => { c.unit = v; render(); refreshCost(); }, { small: true })) : null,
-      quickFill(recentStats(cat.id, (e) => (e.cbd?.unit === c.unit ? e.cbd?.amount : null), entry.id), input, c.unit),
       prods.length ? field('Produit', select(prods.map((p) => ({ id: p.id, label: `${p.name}${p.unit !== c.unit ? ` (${UNITS[p.unit].short})` : ''}` })), c.productId, (v) => { c.productId = v; refreshCost(); }, { placeholder: 'Produit par défaut' })) : null,
       !isJoint ? field('Mode de consommation', chips(CBD_MODES, entry.mode, (v) => { entry.mode = v; })) : null,
       h('p', { class: 'hint' }, 'CBD et THC sont distincts : seul le CBD est suivi ici.'),

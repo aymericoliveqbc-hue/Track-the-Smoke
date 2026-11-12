@@ -10,7 +10,7 @@ import { TRIGGERS, CRAVING_PRODUCTS, labelOf, CONTEXTS } from '../domain/models.
 import { computeNight } from '../domain/sleep.js';
 import { openEntryForm, openCravingForm, openNightForm } from './forms.js';
 
-const methodBadge = (m) => (m === 'weighed' ? badge('pesé', 'violet') : m === 'estimated' ? badge('estimé', 'muted') : null);
+const methodBadge = (m) => (m === 'weighed' ? badge('pesé', 'violet') : m === 'estimated' ? badge('estimé', 'muted') : m === 'auto' ? badge('≈ auto', 'green') : null);
 
 export function entryTitle(e) {
   if (e.kind === 'craving') return e.outcome === 'consumed' ? 'Envie suivie d’une consommation' : 'Envie résistée';

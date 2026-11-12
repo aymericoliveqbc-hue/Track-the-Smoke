@@ -75,7 +75,7 @@ export function renderStats(tab = 'overview') {
     root.append(h('div', { class: 'filters-row' },
       segmented(RANGES, ui.range, (v) => { ui.range = v; rerender(); }, { small: true }),
       ['overview', 'tobacco', 'cbd', 'joints'].includes(tab)
-        ? segmented([{ id: 'all', label: 'Toutes' }, { id: 'weighed', label: 'Pesées' }, { id: 'estimated', label: 'Estimées' }], ui.method, (v) => { ui.method = v; rerender(); }, { small: true })
+        ? segmented([{ id: 'all', label: 'Toutes' }, { id: 'auto', label: 'Auto' }, { id: 'estimated', label: 'Estimées' }, { id: 'weighed', label: 'Pesées' }], ui.method, (v) => { ui.method = v; rerender(); }, { small: true })
         : null));
   }
   const fn = { overview, tobacco, cbd, joints, time, cravings, sleep, finance, simulator, behaviour }[tab] || overview;
@@ -89,7 +89,8 @@ function coverageNote(s) {
   const miss = s.tobacco.missing + s.cbd.missing;
   if (miss) msgs.push(`${miss} saisie(s) sans quantité ne sont pas comptées dans les grammes.`);
   if (s.cost.incomplete) msgs.push(`${s.cost.incomplete} coût(s) incomplet(s).`);
-  if (ui.method !== 'all') msgs.push(`Filtre : quantités ${ui.method === 'weighed' ? 'pesées' : 'estimées'} uniquement.`);
+  if (ui.method !== 'all') msgs.push(`Filtre : quantités ${ui.method === 'weighed' ? 'pesées' : ui.method === 'auto' ? 'calculées automatiquement' : 'estimées'} uniquement.`);
+  if (s.tobacco.auto + s.cbd.auto > 0) msgs.push('Les quantités « auto » sont calculées à partir de tes paquets et s\u2019affinent à chaque repère.');
   return h('p', { class: 'hint' }, msgs.join(' '));
 }
 
@@ -98,6 +99,7 @@ function methodSplit(agg) {
   return splitBar([
     { label: 'Pesé', value: agg.weighed, color: COLORS.violet },
     { label: 'Estimé', value: agg.estimated, color: COLORS.blue },
+    { label: 'Auto (paquets)', value: agg.auto, color: COLORS.green },
     ...(agg.unknownMethod ? [{ label: 'Méthode non précisée', value: agg.unknownMethod, color: COLORS.muted }] : []),
   ], fmtGrams);
 }

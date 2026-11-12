@@ -19,13 +19,14 @@ import { CBD_FORMS, ACCESSORY_TYPES, labelOf } from '../domain/models.js';
 import { hashPin, newSalt, biometricAvailable, registerBiometric } from '../core/lock.js';
 import { healthContent } from './health.js';
 import { renderAppleHealth } from './applehealth.js';
+import { renderPacks } from './packs.js';
 
 const rerender = () => window.dispatchEvent(new Event('tts:render'));
 const back = (title) => h('header', { class: 'view-head' },
   h('a', { class: 'icon-btn', href: '#/profile', 'aria-label': 'Retour' }, icon('back', 20)), h('h1', null, title), h('span', { class: 'spacer' }));
 
 export function renderProfile(sub) {
-  const pages = { products, purchases, stock, categories, notifications, privacy, data, prefs, health, about, applehealth: () => renderAppleHealth(back('Apple Santé')) };
+  const pages = { products, purchases, stock, categories, notifications, privacy, data, prefs, health, about, applehealth: () => renderAppleHealth(back('Apple Santé')), packs: () => renderPacks(back('Mes paquets')) };
   if (sub && pages[sub]) return h('div', { class: 'view' }, pages[sub]());
   const s = state.settings;
   return h('div', { class: 'view' },
@@ -33,6 +34,7 @@ export function renderProfile(sub) {
     isDemo() ? h('div', { class: 'banner banner-demo' }, icon('demo', 18), h('div', null, h('b', null, 'Mode démonstration'), h('span', null, 'Données fictives, totalement séparées de tes données personnelles.')),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { await switchMode('main'); toast('Retour à tes données'); } }, 'Quitter')) : null,
     card(
+      listRow({ icon: 'box', iconTone: 'green', title: 'Mes paquets', sub: state.packs.some((p) => !p.finishedAt) ? `${state.packs.filter((p) => !p.finishedAt).length} en cours · calcul automatique des grammes` : 'Calcul automatique des grammes, sans balance', onclick: () => go('packs') }),
       listRow({ icon: 'tag', title: 'Produits et prix', sub: `${state.products.filter((p) => !p.archived).length} produits`, onclick: () => go('products') }),
       listRow({ icon: 'wallet', iconTone: 'orange', title: 'Achats', sub: `${state.purchases.length} achat(s) enregistré(s)`, onclick: () => go('purchases') }),
       listRow({ icon: 'box', iconTone: 'green', title: 'Stocks', sub: s.stock?.enabled ? 'Suivi activé' : 'Facultatif · désactivé', onclick: () => go('stock') }),

@@ -109,7 +109,17 @@ Produit : `kind: tobacco|cbd|accessory`, unité, tarif de référence facultatif
 
 Rappels configurables (journal, nuit, bilan hebdomadaire, objectifs, bilan financier mensuel, sauvegarde) affichés en bandeaux discrets et masquables. Notifications système facultatives via le service worker. **Limite iOS** : sans serveur de push (exclu pour la confidentialité), une PWA ne peut pas programmer de notification locale ; elles sont émises quand l'application est ouverte ou revient au premier plan.
 
-## 7. Apple Santé
+## 7. Quantités automatiques (sans balance)
+
+`js/domain/autoqty.js`. Méthode `auto`, distincte de `weighed` et `estimated` dans toutes les statistiques (filtre et répartition dédiés).
+
+- **Valeurs de départ** modifiables (`settings.autoPriors`) : roulée 0,30 g de tabac, joint 0,20 g de tabac + 0,20 g de CBD, CBD seul 0,25 g. Elles fixent aussi les proportions entre catégories.
+- **Paquets** (store `packs`, base v2) : produit, contenance, ouverture (neuf ou déjà entamé avec une proportion ou des grammes restants), repères « il en reste… » (à l'œil), fin du paquet.
+- **Calibration** : entre deux repères, grammes partis = restant avant − restant après ; on retire les quantités saisies à la main (pesées/estimées), puis le reste est réparti sur les consommations `auto` du produit au prorata de leurs valeurs de départ → facteur k = réel / générique. Bornes 0,15 ≤ k ≤ 6 (repère incohérent ignoré). Les consommations d'une période calibrée prennent son k (la somme retombe exactement sur le paquet) ; les autres prennent la moyenne pondérée des 6 derniers segments (paquet terminé = poids 1, repère visuel ou ouverture entamée = 0,6).
+- **Recalcul rétroactif** à chaque enregistrement d'entrée, de paquet ou de valeurs de départ (`store.recalibrate`) : coûts, statistiques et stocks suivent.
+- **Précision** affichée : générique → ajustée sur 1 repère → n repères → précise (≥ 4).
+
+## 8. Apple Santé
 
 Une PWA n'a pas accès à HealthKit (réservé aux apps natives). Deux voies locales, sans serveur :
 
@@ -118,13 +128,13 @@ Une PWA n'a pas accès à HealthKit (réservé aux apps natives). Deux voies loc
 
 Conversion (`samplesToNights`) : rattachement à la soirée (avant midi → veille), blocs séparés de plus de 90 min traités comme des sessions distinctes (la sieste est ignorée), intervalles « endormi » fusionnés (doublons iPhone + Watch), latence = début du sommeil − mise au lit, réveils = épisodes « éveillé » (ou interruptions ≥ 5 min). Fusion (`mergeHealthNights`) : seuls les champs vides sont complétés, la qualité/ressenti/bien-être restent manuels, aperçu avant enregistrement. Les nuits seulement importées ne déplacent pas le début du suivi de consommation.
 
-## 8. Graphiques
+## 9. Graphiques
 
 SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de chaleur, nuage de points, barres de répartition, anneaux. Infobulle au toucher/survol, valeurs manquantes jamais dessinées comme des zéros, légendes systématiques au-delà d'une série. Couleurs pilotées par le thème (variables CSS `--c1…--c4`) : feuille (CBD, envies résistées), ardoise (tabac), terre cuite, bruyère. Clair « Sable » `#3E8A5C #3D72B0 #C4643A #8E6AAE` sur `#FBF8F1`, sombre « Forêt » `#4FA877 #5E92D6 #D9744A #9A7CC2` sur `#1C211B` : bande de luminance, chroma, séparation daltonisme (ΔE ≥ 8) et contraste ≥ 3:1 validés dans les deux modes. Interface : beige sable, vert forêt `#3F6E50`, typographie arrondie (SF Pro Rounded) pour titres et chiffres.
 
-## 9. Tests
+## 10. Tests
 
-`npm test` — 35 tests unitaires couvrant notamment : analyse des décimales FR, arithmétique de dates (DST, années bissextiles), prix au gramme, historique de prix, coûts complets/incomplets, non-double comptage des accessoires, unités CBD incompatibles, séparation pesé/estimé, absence de zéros fictifs, analyse des joints (n), corrélations, import Apple Santé (lecture XML en flux, dates FR, nuits, fusion sans écrasement), simulateur, référence/paliers/parcours sans remise à zéro, stocks, export/import, CSV, données de démo.
+`npm test` — 42 tests unitaires couvrant notamment : analyse des décimales FR, arithmétique de dates (DST, années bissextiles), prix au gramme, historique de prix, coûts complets/incomplets, non-double comptage des accessoires, unités CBD incompatibles, séparation pesé/estimé, absence de zéros fictifs, analyse des joints (n), corrélations, import Apple Santé (lecture XML en flux, dates FR, nuits, fusion sans écrasement), quantités automatiques (paquet terminé = somme exacte, paquet entamé, repères, saisies manuelles déduites, repère incohérent ignoré), simulateur, référence/paliers/parcours sans remise à zéro, stocks, export/import, CSV, données de démo.
 
 `npm run e2e` — rejoue dans Chromium (iPhone 14) les scénarios de validation :
 
@@ -138,7 +148,8 @@ SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de cha
 | 6 | Réduction de 25 % | test unitaire sur historique + Simulateur |
 | 7 | Correction d'une quantité | tabac et dépenses recalculés |
 | 8 | Export → « réinstallation » → import | restauration complète sur un navigateur vierge |
+| 9 | Sans balance : tabac ½ de 30 g et CBD ¾ de 5 g entamés, 6 joints, repère « il reste 1 g » | joints remplis automatiquement (0,20 g), puis CBD recalculé rétroactivement (≈ 2,75 g) |
 
-## 10. Mode démonstration
+## 11. Mode démonstration
 
 Accessible au premier lancement ou depuis Profil. Il bascule sur la base `track-the-smoke-demo`, affiche un bandeau orange permanent et n'interagit jamais avec la base personnelle. Les exports de démo sont marqués `demo: true` et signalés à l'import.

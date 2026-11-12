@@ -14,6 +14,7 @@ import { generateInsights } from '../domain/insights.js';
 import { observationStatus, journeyStats } from '../domain/goals.js';
 import { CAT } from '../domain/models.js';
 import { pendingReminders, dismissReminder } from '../app-reminders.js';
+import { packsHomeCard } from './packs.js';
 
 let period = 'today';
 
@@ -45,6 +46,7 @@ export function renderHome() {
       action: h('button', { class: 'btn btn-primary', onclick: openQuickAdd }, icon('plus', 16), 'Première saisie'),
     })));
     root.append(shortcuts());
+    root.append(packsHomeCard());
     return root;
   }
 
@@ -84,6 +86,7 @@ export function renderHome() {
   }
 
   root.append(shortcuts());
+  root.append(packsHomeCard());
 
   // Timeline du jour
   const todayList = entriesOfDay(today);
@@ -118,9 +121,10 @@ export function renderHome() {
 
 function quantitySub(agg) {
   if (!agg.total) return null;
-  if (agg.weighed && agg.estimated) return `${fmtGrams(agg.weighed)} pesés`;
-  if (agg.weighed) return 'pesé';
-  return 'estimé';
+  if (agg.auto && agg.auto === agg.total) return 'calcul auto';
+  if (agg.weighed && agg.weighed === agg.total) return 'pesé';
+  if (agg.estimated && agg.estimated === agg.total) return 'estimé';
+  return 'mixte';
 }
 
 function spendCol(label, v) {

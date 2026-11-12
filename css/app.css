@@ -521,6 +521,28 @@ button.row:active { opacity: .7; }
 .info-block > summary::-webkit-details-marker { display: none; }
 .info-block p { color: var(--text-2); font-size: 14px; line-height: 1.55; }
 
+/* ---------- Quantités automatiques & paquets ---------- */
+.auto-qty { display: flex; align-items: center; gap: 12px; background: var(--c1-soft); border-radius: 14px; padding: 12px 14px; }
+.auto-qty b { display: block; font-family: var(--font-round); font-size: 22px; font-variant-numeric: tabular-nums; }
+.auto-icon { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--card); color: var(--c1); flex: none; }
+.precision { display: inline-flex; gap: 3px; align-items: flex-end; }
+.precision i { width: 5px; border-radius: 2px; background: var(--surface-2); }
+.precision i:nth-child(1) { height: 7px; } .precision i:nth-child(2) { height: 11px; } .precision i:nth-child(3) { height: 15px; }
+.precision.p1 i:nth-child(1), .precision.p2 i:nth-child(-n+2), .precision.p3 i { background: var(--c1); }
+.precision.p0 i:nth-child(1) { background: var(--c3); }
+.tile-sub.strong { color: var(--text); font-weight: 600; font-size: 13px; margin-top: 4px; }
+.pack { display: flex; flex-direction: column; gap: 10px; }
+.pack + .pack { border-top: 1px solid var(--line); padding-top: 12px; }
+.pack-head { display: flex; align-items: center; gap: 12px; }
+.pack-head b { display: block; font-size: 15px; }
+.pack-left { text-align: right; display: flex; flex-direction: column; }
+.pack-left b { font-family: var(--font-round); font-size: 17px; font-variant-numeric: tabular-nums; }
+.pack-bar { height: 10px; border-radius: 5px; background: var(--surface); overflow: hidden; }
+.pack-bar i { display: block; height: 100%; border-radius: 5px; transition: width .4s var(--ease); }
+.pack-bar i.tob { background: var(--c2); } .pack-bar i.cbd { background: var(--c1); }
+.pack-cta { padding: 4px 8px 4px 14px; }
+.pack-cta .banner-main > .icon { color: var(--c1); }
+
 /* ---------- Apple Santé ---------- */
 .ah-hero { display: flex; gap: 14px; align-items: flex-start; }
 .ah-hero h3 { font-size: 17px; margin-bottom: 4px; }

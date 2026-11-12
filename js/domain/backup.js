@@ -4,7 +4,7 @@
 import { SCHEMA_VERSION, CAT, labelOf, CONTEXTS, TRIGGERS, MOODS } from './models.js';
 import { isDayKey, isLocalDateTime } from '../core/dates.js';
 
-export const STORES = ['entries', 'nights', 'products', 'purchases', 'inventories', 'categories', 'goals'];
+export const STORES = ['entries', 'nights', 'products', 'purchases', 'inventories', 'categories', 'goals', 'packs'];
 export const APP_ID = 'track-the-smoke';
 
 export function buildExport(state, { demo = false } = {}) {
