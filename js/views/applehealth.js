@@ -1,4 +1,4 @@
-// Profil › Apple Santé — import du sommeil (Raccourci ou export complet).
+// Réglages › Apple Santé — import du sommeil (Raccourci ou export complet).
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';

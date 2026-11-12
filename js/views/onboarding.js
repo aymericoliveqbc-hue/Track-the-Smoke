@@ -48,7 +48,7 @@ export function renderOnboarding(onDone) {
       h('button', { class: 'btn btn-ghost btn-block', onclick: async () => { await switchMode('demo'); toast('Mode démo : données fictives séparées'); } }, icon('demo', 16), 'Explorer la démo d’abord')),
     () => h('div', { class: 'ob-step' },
       h('h2', null, 'Tes prix réels'),
-      h('p', { class: 'muted' }, 'Ils servent à calculer le coût exact de chaque consommation. Tout est facultatif et modifiable plus tard (Profil › Produits).'),
+      h('p', { class: 'muted' }, 'Ils servent à calculer le coût exact de chaque consommation. Tout est facultatif et modifiable plus tard (Réglages › Produits).'),
       ...Object.values(prices).map((p) => h('div', { class: 'ob-price' },
         h('span', { class: 'ob-price-label' }, p.label),
         h('div', { class: 'grid-2' },

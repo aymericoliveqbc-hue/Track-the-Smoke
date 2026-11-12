@@ -2,7 +2,7 @@
 
 **Know your habits. Take back control.**
 
-Application mobile personnelle (PWA installable sur iPhone, 100 % hors ligne, thème clair « Sable » ou sombre « Forêt ») pour **comprendre, quantifier, réduire puis arrêter** la consommation de tabac et de CBD : consommations, envies (résistées ou non), achats et budget, stocks, sommeil et bien-être, objectifs progressifs.
+Application mobile personnelle (PWA installable sur iPhone, 100 % hors ligne, interface épurée blanc & vert) pour **comprendre, quantifier, réduire puis arrêter** la consommation de tabac et de CBD : consommations, envies (résistées ou non), achats et budget, stocks, sommeil et bien-être, objectifs progressifs.
 
 - Aucun compte, aucun serveur, aucune publicité, aucun traceur : les données restent sur l'appareil (IndexedDB).
 - Jamais de culpabilisation : une consommation n'efface jamais les progrès, aucun compteur n'est remis à zéro.
@@ -27,17 +27,17 @@ Aucune étape de build : le dossier peut être publié tel quel sur n'importe qu
 
 ## Fonctionnalités
 
-| Section | Contenu |
+Navigation : **Accueil · Journal · ＋ · Progrès · Réglages**.
+
+| Écran | Contenu |
 |---|---|
-| **Accueil** | Dépenses jour / 7 j / mois, indicateurs par période (jour, 7 j, 30 j, mois, année) avec variations, raccourcis, timeline du jour modifiable, progression vs période précédente, parcours tabac/CBD, observations automatiques, rappels discrets. |
-| **Journal** | Historique groupé par jour, recherche, filtres par catégorie, calendrier mensuel interactif (consommations, tabac, CBD, €, envies, sommeil), détail d'une journée, ajout à une date passée, modification, duplication, suppression avec annulation. |
-| **Saisie** | Bouton + toujours visible ; catégories Joint tabac + CBD, Roulée, CBD seul, catégories personnalisées ; quantités **auto** (calculées depuis tes paquets, sans balance), **estimées** ou **pesées** ; dernière valeur / moyenne (n) ; heure automatique ; « Express » = enregistrement en un geste avec les dernières valeurs ; coût calculé en direct. |
-| **Envies** | Intensité 0–10, produit, déclencheur, durée, situation, émotion ; issue résistée ou suivie d'une consommation (liée). |
-| **Statistiques** | Synthèse, Tabac, CBD, Joints (moyennes avec nombre d'observations, histogrammes, part de CBD), Temps (heure, jour, période, carte de chaleur, semaines, mois), Envies, Sommeil (corrélations prudentes, calendrier des nuits), Finances, Simulateur, Habitudes. Filtre pesé / estimé. |
-| **Objectifs** | Période d'observation 7–14 j, référence personnelle, objectifs (tabac, CBD, joints, roulées, budget, envies résistées, heure de première consommation) avec paliers libres et historique des révisions ; parcours **Arrêt du tabac** et **Arrêt du CBD** indépendants (jours sans, quantités et dépenses évitées). |
-| **Mes paquets** | Paquets de tabac et de CBD (neufs ou déjà entamés), repères « il en reste… » à l'œil, paquet terminé : l'app en déduit les grammes réels par joint et par roulée et s'affine à chaque paquet. |
-| **Apple Santé** | Import du sommeil mesuré par l'iPhone / l'Apple Watch : export complet de l'app Santé (`export.zip`) ou Raccourci iOS + presse-papiers pour l'import quotidien. Les saisies manuelles ne sont jamais écrasées. |
-| **Profil** | Produits et prix, achats, accessoires, stocks, catégories, rappels, verrouillage (PIN / Face ID), export JSON / CSV, import (remplacer / fusionner), instantanés locaux, suppression définitive, mode démo séparé, informations santé. |
+| **Accueil** | La journée en un coup d'œil (consommations, joints, roulées, envies résistées, grammes, coût), quatre gestes (Joint, Roulée, Envie, Autre), paquets en cours, 7 derniers jours, timeline du jour. |
+| **＋ / gestes** | Joint ou roulée enregistrés **en un geste** avec quantités calculées automatiquement ; « Modifier » juste après si besoin. Saisie détaillée disponible (heure, quantités, contexte). |
+| **Journal** | Historique par jour, recherche, filtres, calendrier mensuel, détail d'une journée, modification, duplication, suppression avec annulation. |
+| **Progrès** | Conso, Argent (dont « Et si… je réduisais »), Envies, Sommeil, Objectifs — en phrases simples ; analyses détaillées à un geste. |
+| **Mes paquets** | Sans balance : paquets neufs ou entamés, « il en reste… » à l'œil, paquet terminé → grammes réels par joint et par roulée, de plus en plus précis. |
+| **Apple Santé** | Import du sommeil (export complet ou Raccourci iOS). |
+| **Réglages** | Produits et prix, achats, stocks, catégories, rappels, verrouillage PIN / Face ID, export / import, mode démo, informations santé. |
 
 ## Documentation technique
 

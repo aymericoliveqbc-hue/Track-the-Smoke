@@ -1,8 +1,8 @@
 // Service worker : fonctionnement 100 % hors ligne.
-// Stratégie « cache d'abord » pour l'application (aucune donnée personnelle
+// Stratégie « réseau d'abord, cache en secours » pour l'application (aucune donnée personnelle
 // n'est mise en cache ici : elles vivent dans IndexedDB).
 
-const VERSION = 'tts-v1.2.0';
+const VERSION = 'tts-v2.0.0';
 const ASSETS = [
   './',
   './index.html',
@@ -47,12 +47,13 @@ const ASSETS = [
   './js/views/journal.js',
   './js/views/onboarding.js',
   './js/views/packs.js',
+  './js/views/progress.js',
   './js/views/profile.js',
   './js/views/stats.js',
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS)));
+  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -67,18 +68,20 @@ self.addEventListener('message', (event) => {
   if (event.data === 'skipWaiting') self.skipWaiting();
 });
 
+// Réseau d'abord (toujours la dernière version quand on est en ligne),
+// cache en secours (hors ligne). Évite de rester bloqué sur une ancienne version.
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   event.respondWith((async () => {
     const cache = await caches.open(VERSION);
-    const cached = await cache.match(req, { ignoreSearch: true });
-    if (cached) return cached;
     try {
-      const res = await fetch(req);
+      const res = await fetch(req, { cache: 'no-cache' });
       if (res.ok) cache.put(req, res.clone());
       return res;
     } catch {
+      const cached = await cache.match(req, { ignoreSearch: true });
+      if (cached) return cached;
       if (req.mode === 'navigate') return (await cache.match('./index.html')) || Response.error();
       return Response.error();
     }

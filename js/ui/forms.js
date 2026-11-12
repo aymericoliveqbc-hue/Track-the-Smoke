@@ -31,47 +31,55 @@ const productsOf = (kind, extra = () => true) => state.products.filter((p) => p.
 
 export function openQuickAdd() {
   openSheet({
-    title: 'Enregistrer',
+    title: 'Ajouter',
     build: (close) => {
       const cats = state.categories.filter((c) => !c.archived);
-      const tile = (c) => {
-        const last = state.settings.quickDefaults?.[c.id];
-        const summary = last ? quickSummary(c, last) : 'Première saisie';
-        return h('div', { class: `quick-tile tone-${c.color}` },
-          h('button', { class: 'quick-main', onclick: () => { close(); openEntryForm({ categoryId: c.id }); } },
-            h('span', { class: 'quick-icon' }, icon(c.icon, 22)),
-            h('span', { class: 'quick-name' }, c.name),
-            h('span', { class: 'quick-sub' }, summary)),
-          last ? h('button', { class: 'quick-fast', 'aria-label': `Enregistrer ${c.name} avec les dernières valeurs`, onclick: async () => { close(); await quickSave(c); } }, icon('check', 16), 'Express') : null);
-      };
+      const tile = (label, ic, tone, fn, sub) => h('button', { class: `add-tile tone-${tone}`, onclick: () => { close(); fn(); } },
+        h('span', { class: 'add-icon' }, icon(ic, 26)), h('span', { class: 'add-label' }, label), sub ? h('span', { class: 'add-sub' }, sub) : null);
       return h('div', { class: 'stack' },
-        h('div', { class: 'quick-grid' }, cats.map(tile)),
-        h('div', { class: 'quick-row' },
-          h('button', { class: 'quick-pill tone-green', onclick: () => { close(); openCravingForm(); } }, icon('wave', 18), 'Envie'),
-          h('button', { class: 'quick-pill tone-blue', onclick: () => { close(); openNightForm(); } }, icon('moon', 18), 'Nuit'),
-          h('button', { class: 'quick-pill tone-orange', onclick: () => { close(); openPurchaseForm(); } }, icon('wallet', 18), 'Achat')),
-        h('p', { class: 'hint center' }, '« Express » enregistre maintenant avec tes dernières valeurs.'));
+        h('div', { class: 'add-grid' },
+          ...cats.map((c) => tile(c.short || c.name, c.icon, c.color, () => quickLog(c.id), instantHint(c))),
+          tile('Envie', 'wave', 'green', () => openCravingForm(), 'résistée ou non'),
+          tile('Nuit', 'moon', 'blue', () => openNightForm(), 'mon sommeil'),
+          tile('Paquet', 'box', 'green', async () => { const { openPackForm } = await import('../views/packs.js'); openPackForm({ kind: 'tobacco' }); }, 'nouveau / entamé')),
+        h('button', { class: 'link center-link', onclick: () => { close(); openEntryForm({ categoryId: CAT.JOINT }); } }, 'Saisie détaillée (heure, quantités, contexte)'));
     },
   });
 }
 
-function quickSummary(cat, last) {
-  const parts = [];
-  const f = currentCalibration().factors;
-  const tg = last.tobacco?.method === 'auto' ? autoEstimate(cat.id, 'tobacco', state.settings, f) : last.tobacco?.grams;
-  const cg = last.cbd?.method === 'auto' && (last.cbd.unit || 'g') === 'g' ? autoEstimate(cat.id, 'cbd', state.settings, f) : last.cbd?.amount;
-  if (cat.tobacco && last.tobacco) parts.push(`${isNum(tg) ? (last.tobacco.method === 'auto' ? '≈ ' : '') + fmtGrams(tg) : '?'} tabac`);
-  if (cat.cbd && last.cbd) parts.push(`${isNum(cg) ? (last.cbd.method === 'auto' ? '≈ ' : '') + fmtQty(cg, last.cbd.unit) : '?'} CBD`);
-  if (!cat.system && isNum(last.quantity?.amount)) parts.push(`${fmtNum(last.quantity.amount)} ${cat.unitLabel || ''}`);
-  return parts.join(' · ') || 'Dernières valeurs';
+/** Une consommation peut-elle être enregistrée en un geste ? */
+function canInstant(entry) {
+  if (entry.tobacco && !isNum(entry.tobacco.grams)) return false;
+  if (entry.cbd && !isNum(entry.cbd.amount)) return false;
+  if (entry.quantity && !isNum(entry.quantity.amount)) return false;
+  return true;
 }
 
-async function quickSave(cat) {
-  const last = clone(state.settings.quickDefaults[cat.id]);
-  const entry = buildEntry(cat, last);
+function instantHint(cat) {
+  const e = buildEntry(cat, clone(state.settings.quickDefaults?.[cat.id] || {}));
+  if (!canInstant(e)) return 'à détailler';
+  const parts = [];
+  if (e.tobacco) parts.push(`${fmtNum(e.tobacco.grams, 2)} g tabac`);
+  if (e.cbd) parts.push(`${fmtNum(e.cbd.amount, 2)} ${e.cbd.unit === 'g' ? 'g ' : ''}CBD`);
+  return parts.join(' · ') || 'en un geste';
+}
+
+/**
+ * Enregistrement en un geste : quantités automatiques (ou dernières
+ * valeurs), heure actuelle. Le formulaire ne s'ouvre que si une quantité
+ * manque. Un toast permet de modifier ou d'annuler aussitôt.
+ */
+export async function quickLog(categoryId) {
+  const cat = catById(categoryId);
+  if (!cat) return;
+  const entry = buildEntry(cat, clone(state.settings.quickDefaults?.[cat.id] || {}));
+  if (!canInstant(entry)) { openEntryForm({ categoryId }); return; }
   await persistEntry(entry, cat);
   haptic(15);
-  toast(`Enregistré · ${cat.short || cat.name} à ${entry.at.slice(11)}`, { action: 'Modifier', onAction: () => openEntryForm({ entry }) });
+  toast(`${cat.short || cat.name} ajouté · ${entry.at.slice(11)}`, {
+    action: 'Modifier',
+    onAction: () => { const cur = state.entries.find((e) => e.id === entry.id); if (cur) openEntryForm({ entry: cur }); },
+  });
 }
 
 /* =================================================================== */
@@ -135,7 +143,7 @@ export function openEntryForm({ categoryId, entry: existing, at, cravingId, dupl
   }
 
   openSheet({
-    title: editing ? 'Modifier la consommation' : duplicate ? 'Dupliquer' : 'Nouvelle consommation',
+    title: editing ? 'Modifier' : duplicate ? 'Dupliquer' : 'Nouvelle consommation',
     size: 'full',
     build: (close) => {
       const root = h('div', { class: 'stack form' });
@@ -148,30 +156,28 @@ export function openEntryForm({ categoryId, entry: existing, at, cravingId, dupl
             entry = { ...fresh, id: entry.id, at: entry.at, tzOffset: entry.tzOffset, note: entry.note, cravingId: entry.cravingId, createdAt: entry.createdAt };
             render();
           }),
-          entry.cravingId ? note('Consommation liée à une envie enregistrée.', 'info') : null,
-          whenField(entry),
+          entry.cravingId ? note('Liée à une envie.', 'info') : null,
           cat.tobacco ? tobaccoSection(entry, cat) : null,
           cat.cbd ? cbdSection(entry, cat) : null,
           !cat.system && entry.quantity ? customQuantity(entry, cat) : null,
-          accessoriesSection(entry),
-          !cat.system && cat.fields?.length ? customFields(entry, cat) : null,
-          detailsSection(entry, cat),
           costPreview(entry),
+          whenField(entry),
+          detailsSection(entry, cat),
           h('div', { class: 'form-actions sticky-actions' },
             h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: async () => {
               const c = catById(entry.categoryId);
               await persistEntry(entry, c);
               haptic(15);
               close();
-              toast(editing ? 'Consommation modifiée — statistiques recalculées' : `Enregistré · ${c.short || c.name}`);
-            } }, editing ? 'Enregistrer les modifications' : 'Enregistrer'),
-            editing ? h('div', { class: 'row-actions' },
-              h('button', { class: 'btn btn-ghost', onclick: () => { close(); openEntryForm({ entry: existing, duplicate: true }); } }, icon('copy', 16), 'Dupliquer'),
-              h('button', { class: 'btn btn-ghost danger', onclick: async () => {
+              toast(editing ? 'Modifié' : `${c.short || c.name} ajouté`);
+            } }, editing ? 'Enregistrer' : 'Ajouter'),
+            editing ? h('div', { class: 'link-row' },
+              h('button', { class: 'link', onclick: () => { close(); openEntryForm({ entry: existing, duplicate: true }); } }, 'Dupliquer'),
+              h('button', { class: 'link danger', onclick: async () => {
                 if (await confirmDialog({ title: 'Supprimer cette consommation ?', message: 'Elle sera retirée du journal, des statistiques et des coûts.', confirm: 'Supprimer', danger: true })) {
                   await deleteEntry(existing); close();
                 }
-              } }, icon('trash', 16), 'Supprimer')) : null),
+              } }, 'Supprimer')) : null),
         );
       };
       render();
@@ -200,18 +206,21 @@ function categoryPicker(entry, onchange) {
 }
 
 function whenField(entry) {
-  const input = h('input', { class: 'input', type: 'datetime-local', value: entry.at, max: `${dayKey()}T23:59`, onchange: (e) => { if (e.target.value) entry.at = e.target.value.slice(0, 16); } });
-  const shift = (min) => {
-    const d = new Date(Date.now() - min * 60000);
-    entry.at = `${dayKey(d)}T${timeKey(d)}`; entry.tzOffset = d.getTimezoneOffset();
-    input.value = entry.at;
+  const now = nowLocal();
+  const ago = (min) => { const d = new Date(Date.now() - min * 60000); return `${dayKey(d)}T${timeKey(d)}`; };
+  const presets = [[0, 'Maintenant'], [15, '−15 min'], [30, '−30 min'], [60, '−1 h']];
+  const wrap = h('div', { class: 'field' });
+  let custom = entry.at.slice(0, 16) !== now && !presets.some(([m]) => ago(m) === entry.at);
+  const render = () => {
+    const input = h('input', { class: 'input', type: 'datetime-local', value: entry.at, onchange: (e) => { if (e.target.value) { entry.at = e.target.value.slice(0, 16); entry.tzOffset = new Date().getTimezoneOffset(); } } });
+    fill(wrap, h('span', { class: 'field-label' }, 'Quand'),
+      h('div', { class: 'chips chips-sm' },
+        ...presets.map(([m, l]) => h('button', { type: 'button', class: `chip ${!custom && ago(m) === entry.at ? 'on' : ''}`, onclick: () => { entry.at = ago(m); entry.tzOffset = new Date().getTimezoneOffset(); custom = false; render(); } }, l)),
+        h('button', { type: 'button', class: `chip ${custom ? 'on' : ''}`, onclick: () => { custom = true; render(); } }, custom ? `${entry.at.slice(8, 10)}/${entry.at.slice(5, 7)} ${entry.at.slice(11)}` : 'Autre…')),
+      custom ? input : null);
   };
-  return field('Date et heure', h('div', { class: 'stack-sm' }, input,
-    h('div', { class: 'chips chips-sm' },
-      h('button', { type: 'button', class: 'chip', onclick: () => shift(0) }, 'Maintenant'),
-      h('button', { type: 'button', class: 'chip', onclick: () => shift(15) }, '−15 min'),
-      h('button', { type: 'button', class: 'chip', onclick: () => shift(30) }, '−30 min'),
-      h('button', { type: 'button', class: 'chip', onclick: () => shift(60) }, '−1 h'))));
+  render();
+  return wrap;
 }
 
 function quickFill(stats, inputEl, unit = 'g') {
@@ -239,7 +248,7 @@ function quantityArea(entry, obj, key, cat, substance, unit, inputOpts) {
         h('span', { class: 'auto-icon' }, icon('sparkle', 16)),
         h('div', { class: 'grow' }, h('b', null, `≈ ${fmtGrams(obj[key])}`), h('span', { class: 'muted small' }, p.label)),
         h('span', { class: `precision p${p.level}` }, h('i'), h('i'), h('i'))),
-      h('p', { class: 'hint' }, p.level < 1 ? 'Valeur générique. Déclare ton paquet en cours (Profil › Mes paquets) : l\u2019app apprendra tes vraies quantités.' : 'Calculé d\u2019après tes paquets. Se met à jour tout seul à chaque repère.'));
+      p.level < 1 ? h('p', { class: 'hint' }, 'Valeur de départ : déclare ton paquet (Réglages › Mes paquets) pour qu’elle s’ajuste.') : null);
     } else {
       if (obj.method === 'auto') obj.method = 'estimated';
       const input = decimalInput({ value: obj[key], unit: UNITS[unit].short, ...inputOpts, onchange: (v) => { obj[key] = v; refreshCost(); } });
@@ -288,7 +297,6 @@ function cbdSection(entry, cat) {
       unitOptions.length > 1 ? field('Unité', segmented(unitOptions.map((u) => ({ id: u, label: UNITS[u].label })), c.unit, (v) => { c.unit = v; render(); refreshCost(); }, { small: true })) : null,
       prods.length ? field('Produit', select(prods.map((p) => ({ id: p.id, label: `${p.name}${p.unit !== c.unit ? ` (${UNITS[p.unit].short})` : ''}` })), c.productId, (v) => { c.productId = v; refreshCost(); }, { placeholder: 'Produit par défaut' })) : null,
       !isJoint ? field('Mode de consommation', chips(CBD_MODES, entry.mode, (v) => { entry.mode = v; })) : null,
-      h('p', { class: 'hint' }, 'CBD et THC sont distincts : seul le CBD est suivi ici.'),
     );
   };
   render();
@@ -341,13 +349,14 @@ function customFields(entry, cat) {
 
 function detailsSection(entry, cat) {
   const open = !!(entry.context || entry.mood || entry.note);
-  const details = h('details', { class: 'form-details', open },
-    h('summary', null, 'Contexte, humeur, commentaire'),
+  return h('details', { class: 'form-details', open },
+    h('summary', null, 'Plus de détails'),
     h('div', { class: 'stack' },
+      accessoriesSection(entry),
+      !cat.system && cat.fields?.length ? customFields(entry, cat) : null,
       field('Contexte', chips(CONTEXTS, entry.context, (v) => { entry.context = v; })),
       cat.id !== CAT.ROLLED ? field('Humeur', chips(MOODS, entry.mood, (v) => { entry.mood = v; })) : null,
-      field('Commentaire', textArea({ value: entry.note, placeholder: 'Facultatif', oninput: (v) => { entry.note = v; } }))));
-  return details;
+      field('Note', textArea({ value: entry.note, placeholder: 'Facultatif', oninput: (v) => { entry.note = v; } }))));
 }
 
 let refreshCost = () => {};
@@ -356,13 +365,8 @@ function costPreview(entry) {
   refreshCost = () => {
     const { ctx } = derived();
     const c = ctx.cost({ ...entry, updatedAt: `preview-${Math.random()}` });
-    fill(el, 
-      h('div', { class: 'cost-main' }, h('span', { class: 'muted' }, 'Coût estimé'), h('b', null, fmtMoney(c.total))),
-      h('div', { class: 'cost-parts' },
-        entry.tobacco ? h('span', null, `Tabac ${c.tobacco != null ? fmtMoney(c.tobacco) : '—'}`) : null,
-        entry.cbd ? h('span', null, `CBD ${c.cbd != null ? fmtMoney(c.cbd) : '—'}`) : null,
-        h('span', null, `Accessoires ${fmtMoney(c.accessories)}`)),
-      !c.complete ? h('p', { class: 'hint warn' }, `Coût incomplet : ${c.missing.join(', ')}.`) : null);
+    fill(el, h('span', { class: 'muted' }, 'Coût'), h('b', null, c.total > 0 ? `≈ ${fmtMoney(c.total)}` : '—'),
+      !c.complete ? h('span', { class: 'cost-warn' }, 'prix à compléter') : null);
   };
   refreshCost();
   return el;
@@ -380,7 +384,7 @@ export function openCravingForm({ craving: existing, at } = {}) {
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
   openSheet({
-    title: editing ? "Modifier l'envie" : 'Envie de fumer',
+    title: editing ? "Modifier l'envie" : 'Une envie',
     size: 'full',
     build: (close) => {
       const intensityLbl = h('span', { class: 'muted' }, intensityLabel(c.intensity));
@@ -388,18 +392,19 @@ export function openCravingForm({ craving: existing, at } = {}) {
       const otherWrap = h('div', { hidden: c.trigger !== 'other' }, triggerOther);
       const linked = c.consumptionId ? state.entries.find((e) => e.id === c.consumptionId) : null;
       return h('div', { class: 'stack form' },
-        note('Noter une envie, c’est déjà mieux la comprendre. Ce n’est jamais un échec.', 'positive'),
-        field('Issue', segmented([{ id: 'resisted', label: 'Résistée' }, { id: 'consumed', label: 'Suivie d’une consommation' }], c.outcome, (v) => { c.outcome = v; }, { small: true })),
-        field('Date et heure', h('input', { class: 'input', type: 'datetime-local', value: c.at, onchange: (e) => { if (e.target.value) c.at = e.target.value.slice(0, 16); } })),
-        h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Intensité (0 à 10) ', intensityLbl),
-          scale(0, 10, c.intensity, (v) => { c.intensity = v; intensityLbl.textContent = intensityLabel(v); }, { labels: ['aucune', 'très forte'] })),
-        field('Produit concerné', segmented(CRAVING_PRODUCTS, c.product, (v) => { c.product = v; }, { small: true })),
-        field('Déclencheur', chips(TRIGGERS, c.trigger, (v) => { c.trigger = v; otherWrap.hidden = v !== 'other'; })),
+        segmented([{ id: 'resisted', label: 'J’ai résisté' }, { id: 'consumed', label: 'J’ai consommé' }], c.outcome, (v) => { c.outcome = v; }),
+        h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Intensité ', intensityLbl),
+          scale(0, 10, c.intensity, (v) => { c.intensity = v; intensityLbl.textContent = intensityLabel(v); }, { labels: ['faible', 'très forte'] })),
+        field('Pourquoi ?', chips(TRIGGERS, c.trigger, (v) => { c.trigger = v; otherWrap.hidden = v !== 'other'; })),
         otherWrap,
-        field('Durée de l’envie', decimalInput({ value: c.durationMin, unit: 'min', step: 1, onchange: (v) => { c.durationMin = v; } })),
-        field('Situation', chips(CONTEXTS, c.situation, (v) => { c.situation = v; })),
-        field('État émotionnel', chips(MOODS, c.emotion, (v) => { c.emotion = v; })),
-        field('Commentaire', textArea({ value: c.note, placeholder: 'Ce qui t’a aidé, ce qui s’est passé…', oninput: (v) => { c.note = v; } })),
+        h('details', { class: 'form-details' }, h('summary', null, 'Plus de détails'),
+          h('div', { class: 'stack' },
+            field('Heure', h('input', { class: 'input', type: 'datetime-local', value: c.at, onchange: (e) => { if (e.target.value) c.at = e.target.value.slice(0, 16); } })),
+            field('Envie de', segmented(CRAVING_PRODUCTS, c.product, (v) => { c.product = v; }, { small: true })),
+            field('Durée', decimalInput({ value: c.durationMin, unit: 'min', step: 1, onchange: (v) => { c.durationMin = v; } })),
+            field('Situation', chips(CONTEXTS, c.situation, (v) => { c.situation = v; })),
+            field('Ressenti', chips(MOODS, c.emotion, (v) => { c.emotion = v; })),
+            field('Note', textArea({ value: c.note, placeholder: 'Ce qui t’a aidé…', oninput: (v) => { c.note = v; } })))),
         linked ? note(`Liée à : ${catById(linked.categoryId)?.name || 'consommation'} à ${linked.at.slice(11)}`, 'info') : null,
         h('div', { class: 'form-actions sticky-actions' },
           h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: async () => {
@@ -414,7 +419,7 @@ export function openCravingForm({ craving: existing, at } = {}) {
             } else {
               toast(c.outcome === 'resisted' ? 'Envie résistée enregistrée' : 'Envie modifiée');
             }
-          } }, editing ? 'Enregistrer les modifications' : 'Enregistrer l’envie'),
+          } }, editing ? 'Enregistrer' : 'Enregistrer l’envie'),
           editing ? h('button', { class: 'btn btn-ghost danger btn-block', onclick: async () => {
             if (await confirmDialog({ title: 'Supprimer cette envie ?', message: 'Elle sera retirée du journal et des statistiques.', confirm: 'Supprimer', danger: true })) {
               await remove('entries', c.id); close(); toast('Envie supprimée', { action: 'Annuler', onAction: () => save('entries', existing) });
@@ -461,39 +466,29 @@ export function openNightForm({ date } = {}) {
         const ctx = nightContext(n, state.entries);
         const latencyInput = decimalInput({ value: n.latencyMin, unit: 'min', step: 5, onchange: (v) => { n.latencyMin = v; refresh(); } });
         fill(root, 
-          field('Nuit du', h('input', { class: 'input', type: 'date', value: n.date, max: dayKey(), onchange: (e) => {
-            const d = e.target.value; if (!d) return;
-            const ex = state.nights.find((x) => x.date === d);
-            n = ex ? clone(ex) : { ...newNight(d), bedTime: n.bedTime, wakeTime: n.wakeTime };
-            render();
-          } }), 'Date de la soirée où la nuit commence.'),
-          n.source === 'apple-health' || n.health ? note('Données complétées depuis Apple Santé. Tes modifications priment toujours.', 'info')
-            : h('a', { class: 'chip ah-chip', href: '#/profile/applehealth' }, icon('heart', 14), 'Remplir depuis Apple Santé'),
-          h('div', { class: 'grid-2' }, time('bedTime', 'Coucher'), time('tryTime', 'Essai de dormir')),
-          field('Temps pour s’endormir', h('div', { class: 'stack-sm' }, latencyInput,
-            h('div', { class: 'chips chips-sm' }, [15, 30, 60, 120, 240].map((m) => h('button', { type: 'button', class: 'chip', onclick: () => latencyInput.setValue(m) }, formatDuration(m))))),
-          'Ou indique l’heure d’endormissement ci-dessous.'),
-          h('div', { class: 'grid-2' }, time('asleepTime', 'Endormissement (heure)'), time('wakeTime', 'Réveil')),
+          h('div', { class: 'grid-2' }, time('bedTime', 'Couché·e à'), time('wakeTime', 'Réveillé·e à')),
+          field('Temps pour t’endormir', h('div', { class: 'stack-sm' },
+            h('div', { class: 'chips chips-sm' }, [10, 20, 30, 60, 120, 240].map((m) => h('button', { type: 'button', class: `chip ${n.latencyMin === m ? 'on' : ''}`, onclick: () => { n.latencyMin = m; render(); } }, formatDuration(m)))),
+            latencyInput)),
+          h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Qualité de la nuit'), scale(1, 5, n.quality, (v) => { n.quality = v; }, { labels: ['mauvaise', 'excellente'] })),
           preview,
-          field('Réveils nocturnes', decimalInput({ value: n.awakenings, unit: 'fois', step: 1, onchange: (v) => { n.awakenings = v == null ? null : Math.round(v); } })),
-          h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Qualité du sommeil'), scale(1, 5, n.quality, (v) => { n.quality = v; }, { labels: ['très mauvaise', 'excellente'] })),
-          field('Sensation au réveil', chips(WAKE_FEELINGS, n.wakeFeeling, (v) => { n.wakeFeeling = v; })),
-          h('details', { class: 'form-details', open: [n.stress, n.agitation, n.fatigue, n.mood, n.relaxDifficulty, n.energy].some((x) => x != null) },
-            h('summary', null, 'Bien-être de la journée'),
+          h('details', { class: 'form-details' },
+            h('summary', null, 'Plus de détails'),
             h('div', { class: 'stack' },
+              field('Nuit du', h('input', { class: 'input', type: 'date', value: n.date, max: dayKey(), onchange: (e) => {
+                const d = e.target.value; if (!d) return;
+                const ex = state.nights.find((x) => x.date === d);
+                n = ex ? clone(ex) : { ...newNight(d), bedTime: n.bedTime, wakeTime: n.wakeTime };
+                render();
+              } }), 'Date du soir où la nuit commence.'),
+              h('div', { class: 'grid-2' }, time('tryTime', 'Essai de dormir'), time('asleepTime', 'Endormi·e à')),
+              field('Réveils dans la nuit', decimalInput({ value: n.awakenings, unit: 'fois', step: 1, onchange: (v) => { n.awakenings = v == null ? null : Math.round(v); } })),
+              field('Au réveil', chips(WAKE_FEELINGS, n.wakeFeeling, (v) => { n.wakeFeeling = v; })),
               ...[['stress', 'Stress'], ['agitation', 'Agitation mentale'], ['fatigue', 'Fatigue'], ['mood', 'Humeur'], ['relaxDifficulty', 'Difficulté à se détendre'], ['energy', 'Énergie']]
-                .map(([k, l]) => h('div', { class: 'field' }, h('span', { class: 'field-label' }, l), scale(1, 5, n[k], (v) => { n[k] = v; }, { labels: ['faible', 'élevé'] }))))),
-          field('Commentaire', textArea({ value: n.note, placeholder: 'Facultatif', oninput: (v) => { n.note = v; } })),
-          h('div', { class: 'card card-inset' },
-            h('h4', { class: 'mini-title' }, 'La journée précédente'),
-            h('div', { class: 'mini-grid' },
-              h('div', null, h('b', null, String(ctx.day.count)), h('span', null, 'consommations')),
-              h('div', null, h('b', null, fmtGrams(ctx.day.tobacco)), h('span', null, 'tabac')),
-              h('div', null, h('b', null, fmtGrams(ctx.day.cbd)), h('span', null, 'CBD')),
-              h('div', null, h('b', null, String(ctx.evening.count)), h('span', null, 'le soir (dès 18 h)')),
-              h('div', null, h('b', null, String(ctx.day.cravings)), h('span', null, 'envies')),
-              h('div', null, h('b', null, String(ctx.nightCravings)), h('span', null, 'envies la nuit'))),
-            h('p', { class: 'hint' }, 'Simple mise en regard des données ; aucune conclusion médicale.')),
+                .map(([k, l]) => h('div', { class: 'field' }, h('span', { class: 'field-label' }, l), scale(1, 5, n[k], (v) => { n[k] = v; }, { labels: ['faible', 'élevé'] }))),
+              field('Note', textArea({ value: n.note, placeholder: 'Facultatif', oninput: (v) => { n.note = v; } })),
+              h('p', { class: 'hint' }, `La veille : ${ctx.day.count} consommation(s), ${fmtGrams(ctx.day.tobacco)} de tabac, ${fmtGrams(ctx.day.cbd)} de CBD, ${ctx.day.cravings} envie(s). Simple mise en regard, sans conclusion médicale.`),
+              n.source === 'apple-health' || n.health ? note('Complétée depuis Apple Santé.', 'info') : null)),
           h('div', { class: 'form-actions sticky-actions' },
             h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: async () => {
               n.id = `night_${n.date}`;

@@ -13,14 +13,14 @@ import { observationStatus, evaluateGoal, journeyStats, realizedSavings, metricO
 
 const rerender = () => window.dispatchEvent(new Event('tts:render'));
 
-export function renderGoals() {
+export function renderGoals({ embedded = false } = {}) {
   const { ctx, today } = derived();
   const s = state.settings;
-  const root = h('div', { class: 'view' });
-  root.append(h('header', { class: 'view-head' }, h('h1', null, 'Objectifs'),
+  const root = h('div', { class: embedded ? 'stack' : 'view' });
+  if (!embedded) root.append(h('header', { class: 'view-head' }, h('h1', null, 'Objectifs'),
     h('button', { class: 'icon-btn icon-btn-solid', 'aria-label': 'Nouvel objectif', onclick: () => openGoalForm() }, icon('plus', 20))));
 
-  root.append(h('p', { class: 'muted intro' }, 'Ton rythme, tes règles. Aucun calendrier n’est imposé, et une consommation n’efface jamais tes progrès.'));
+  root.append(h('p', { class: 'muted intro' }, 'Ton rythme, tes règles. Une consommation n’efface jamais tes progrès.'));
 
   // Phase d'observation
   const obs = observationStatus(s, today);

@@ -63,8 +63,8 @@ export function logo(size = 32) {
   span.className = 'logo-mark';
   span.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" aria-label="TRACK THE SMOKE">
     <path d="M32 8a24 24 0 1 0 24 24" style="stroke:var(--primary)" stroke-width="5" stroke-linecap="round"/>
-    <path d="M32 19a13 13 0 1 0 13 13" style="stroke:var(--primary);stroke-opacity:.45" stroke-width="5" stroke-linecap="round"/>
-    <circle cx="56" cy="32" r="4.5" style="fill:var(--c3)"/>
+    <path d="M32 19a13 13 0 1 0 13 13" style="stroke:var(--primary);stroke-opacity:.35" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="56" cy="32" r="4.5" style="fill:var(--primary)"/>
     <circle cx="32" cy="32" r="3.2" style="fill:var(--text)"/>
   </svg>`;
   return span;

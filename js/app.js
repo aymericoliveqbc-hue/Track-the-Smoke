@@ -14,21 +14,23 @@ import { renderStats } from './views/stats.js';
 import { renderGoals } from './views/goals.js';
 import { renderProfile } from './views/profile.js';
 import { renderOnboarding } from './views/onboarding.js';
+import { renderProgress } from './views/progress.js';
 
 const NAV = [
   { id: 'home', label: 'Accueil', icon: 'home' },
   { id: 'journal', label: 'Journal', icon: 'journal' },
-  { id: 'stats', label: 'Stats', icon: 'stats' },
-  { id: 'goals', label: 'Objectifs', icon: 'goals' },
-  { id: 'profile', label: 'Profil', icon: 'profile' },
+  { id: 'progress', label: 'Progrès', icon: 'stats' },
+  { id: 'profile', label: 'Réglages', icon: 'settings' },
 ];
+const VIEWS = ['home', 'journal', 'progress', 'stats', 'goals', 'profile'];
+const TAB_OF = { stats: 'progress', goals: 'progress' };
 
 let locked = false;
 let lastRoute = '';
 
 function parseRoute() {
   const [, view = 'home', sub = null] = (location.hash || '#/home').split('/');
-  return { view: NAV.some((n) => n.id === view) ? view : 'home', sub };
+  return { view: VIEWS.includes(view) ? view : 'home', sub };
 }
 
 function render() {
@@ -47,7 +49,7 @@ function render() {
   const y = window.scrollY;
   let node;
   try {
-    node = { home: renderHome, journal: renderJournal, stats: () => renderStats(sub || 'overview'), goals: renderGoals, profile: () => renderProfile(sub) }[view]();
+    node = { home: renderHome, journal: renderJournal, progress: () => renderProgress(sub || 'conso'), stats: () => renderStats(sub || 'overview'), goals: renderGoals, profile: () => renderProfile(sub) }[view]();
   } catch (err) {
     console.error(err);
     node = h('div', { class: 'view' }, h('div', { class: 'card' }, h('h3', null, 'Un problème est survenu'), h('p', { class: 'muted' }, 'Tes données ne sont pas affectées. Recharge l’application.'), h('pre', { class: 'muted small' }, String(err?.message || err))));
@@ -56,25 +58,23 @@ function render() {
   if (!keepScroll) { window.scrollTo(0, 0); main.classList.remove('enter'); void main.offsetWidth; main.classList.add('enter'); }
   else window.scrollTo(0, y);
   lastRoute = route;
-  for (const b of document.querySelectorAll('.tabbar a')) b.classList.toggle('on', b.dataset.id === view);
+  for (const b of document.querySelectorAll('.tabbar a')) b.classList.toggle('on', b.dataset.id === (TAB_OF[view] || view));
   document.getElementById('demo-ribbon').hidden = !isDemo();
 }
 
-const darkQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
 export function applyTheme() {
-  const t = state.settings.theme;
-  const mode = t === 'dark' || (t === 'auto' && darkQuery?.matches) ? 'dark' : 'light';
+  // Thème unique, clair (blanc & vert).
+  const mode = 'light';
   document.documentElement.dataset.theme = mode;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#151913' : '#F3EEE4');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#F5F7F6');
 }
-darkQuery?.addEventListener?.('change', () => applyTheme());
 
 function buildShell() {
   applyTheme();
   const tabbar = $('#tabbar');
-  clear(tabbar).append(...NAV.map(tab));
-  document.querySelector('.fab')?.remove();
-  document.body.append(h('button', { class: 'fab', 'aria-label': 'Enregistrer rapidement', onclick: () => { haptic(10); openQuickAdd(); } }, icon('plus', 26)));
+  clear(tabbar).append(tab(NAV[0]), tab(NAV[1]),
+    h('button', { class: 'tab-add', 'aria-label': 'Enregistrer', onclick: () => { haptic(10); openQuickAdd(); } }, icon('plus', 26)),
+    tab(NAV[2]), tab(NAV[3]));
   $('#demo-ribbon').replaceChildren(icon('demo', 14), h('span', null, 'Mode démo · données fictives'),
     h('button', { onclick: async () => { await switchMode('main'); toast('Retour à tes données'); } }, 'Quitter'));
 }
@@ -157,18 +157,8 @@ async function start() {
   setTimeout(() => { autoBackup(buildExport).catch(() => {}); notifyPending(); }, 2000);
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('./sw.js').then((reg) => {
-      reg.addEventListener('updatefound', () => {
-        const w = reg.installing;
-        w?.addEventListener('statechange', () => {
-          if (w.state === 'installed' && navigator.serviceWorker.controller) {
-            toast('Nouvelle version disponible', { action: 'Mettre à jour', onAction: () => { w.postMessage('skipWaiting'); }, duration: 10000 });
-          }
-        });
-      });
-    }).catch(() => {});
-    let reloaded = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
+    // Le service worker sert la version en ligne en priorité : pas de rechargement forcé.
+    navigator.serviceWorker.register('./sw.js').then((reg) => reg.update?.()).catch(() => {});
   }
 }
 

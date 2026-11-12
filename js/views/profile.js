@@ -30,7 +30,7 @@ export function renderProfile(sub) {
   if (sub && pages[sub]) return h('div', { class: 'view' }, pages[sub]());
   const s = state.settings;
   return h('div', { class: 'view' },
-    h('header', { class: 'view-head' }, h('h1', null, 'Profil')),
+    h('header', { class: 'view-head' }, h('h1', null, 'Réglages')),
     isDemo() ? h('div', { class: 'banner banner-demo' }, icon('demo', 18), h('div', null, h('b', null, 'Mode démonstration'), h('span', null, 'Données fictives, totalement séparées de tes données personnelles.')),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { await switchMode('main'); toast('Retour à tes données'); } }, 'Quitter')) : null,
     card(
@@ -335,10 +335,8 @@ function prefs() {
   return h('div', { class: 'stack' }, back('Préférences'),
     card(
       field('Devise', select([{ id: 'EUR', label: 'Euro (€)' }, { id: 'CHF', label: 'Franc suisse (CHF)' }, { id: 'GBP', label: 'Livre (£)' }, { id: 'USD', label: 'Dollar ($)' }, { id: 'CAD', label: 'Dollar canadien ($ CA)' }], s.currency, (v) => saveSettings({ currency: v || 'EUR' }))),
-      field('Méthode de saisie par défaut', segmented([{ id: 'estimated', label: 'Estimation' }, { id: 'weighed', label: 'Pesée' }], s.defaultMethod, (v) => saveSettings({ defaultMethod: v }), { small: true }), 'Tu peux toujours changer de méthode pour chaque saisie.'),
-      field('Unités', h('p', { class: 'muted' }, 'Système métrique : grammes au centième (0,01 g), millilitres, gouttes, unités.')),
-      field('Apparence', segmented([{ id: 'light', label: 'Sable' }, { id: 'dark', label: 'Forêt' }, { id: 'auto', label: 'Automatique' }], ['light', 'dark', 'auto'].includes(s.theme) ? s.theme : 'light', (v) => saveSettings({ theme: v }), { small: true }),
-        'Sable : clair et chaleureux. Forêt : sombre et doux. Automatique : suit le réglage de l\u2019iPhone.')),
+      field('Méthode de saisie par défaut', segmented([{ id: 'auto', label: 'Auto' }, { id: 'estimated', label: 'Estimée' }, { id: 'weighed', label: 'Pesée' }], s.defaultMethod || 'auto', (v) => saveSettings({ defaultMethod: v }), { small: true }), 'Tu peux toujours changer de méthode pour chaque saisie.'),
+      field('Unités', h('p', { class: 'muted' }, 'Système métrique : grammes au centième (0,01 g), millilitres, gouttes, unités.'))),
     card(
       field('Date de début du suivi', h('input', { class: 'input', type: 'date', value: s.trackingStart || '', max: dayKey(), onchange: (e) => saveSettings({ trackingStart: e.target.value || null }) }),
         'Les jours antérieurs ne sont jamais comptés comme « zéro consommation ».')));
