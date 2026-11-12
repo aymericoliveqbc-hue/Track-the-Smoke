@@ -67,15 +67,15 @@ export function icon(name, size = 22, extraClass = '') {
   return span;
 }
 
-/** Logo TRACK THE SMOKE : trajectoire ouverte qui se resserre vers un point. */
+/** Logo TRACK THE SMOKE : trajectoire ouverte qui se resserre vers un point, prolongée d'une feuille. */
 export function logo(size = 32) {
   const span = document.createElement('span');
   span.className = 'logo-mark';
   span.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" aria-label="TRACK THE SMOKE">
-    <path d="M32 8a24 24 0 1 0 24 24" style="stroke:var(--primary)" stroke-width="5" stroke-linecap="round"/>
-    <path d="M32 19a13 13 0 1 0 13 13" style="stroke:var(--primary);stroke-opacity:.35" stroke-width="5" stroke-linecap="round"/>
-    <circle cx="56" cy="32" r="4.5" style="fill:var(--primary)"/>
-    <circle cx="32" cy="32" r="3.2" style="fill:var(--text)"/>
+    <path d="M30 10a21 21 0 1 0 21 21" style="stroke:var(--primary)" stroke-width="4.6" stroke-linecap="round"/>
+    <path d="M30 20.5a10.5 10.5 0 1 0 10.5 10.5" style="stroke:var(--primary);stroke-opacity:.38" stroke-width="4.6" stroke-linecap="round"/>
+    <circle cx="30" cy="31" r="3" style="fill:var(--text)"/>
+    <path d="M51 31.3c-.4-6.6 3.4-11.6 10-13 .6 6.8-3.4 11.6-10 13z" style="fill:var(--sage)"/>
   </svg>`;
   return span;
 }

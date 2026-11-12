@@ -15,7 +15,9 @@ const targets = [
 ];
 for (const [name, size, full] of targets) {
   // Apple et « maskable » : fond plein (iOS applique ses propres arrondis), symbole réduit pour la zone sûre.
-  const inner = full ? svg.replace('rx="112"', 'rx="0"').replace('translate(256 256)', 'translate(256 256) scale(.8)') : svg;
+  // iOS arrondit lui-même l'icône ; « maskable » réduit le symbole à la zone sûre (80 %).
+  const scale = name.startsWith('icon-maskable') ? 0.8 : 0.94;
+  const inner = full ? svg.replaceAll('rx="112"', 'rx="0"').replace('translate(250 262)', `translate(256 256) scale(${scale}) translate(-6 6)`) : svg;
   await page.setViewportSize({ width: size, height: size });
   await page.setContent(`<html><body style="margin:0;background:${full ? '#FFFFFF' : 'transparent'}">${inner.replace('<svg ', `<svg width="${size}" height="${size}" `)}</body></html>`);
   await page.screenshot({ path: join(dir, name), omitBackground: !full });

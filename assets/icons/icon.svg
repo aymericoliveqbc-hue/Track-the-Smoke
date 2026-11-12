@@ -1,9 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#FFFFFF"/>
-  <g transform="translate(256 256)" fill="none" stroke-linecap="round">
-    <path d="M0 -150 A150 150 0 1 0 150 0" stroke="#1E8E5A" stroke-width="34"/>
-    <path d="M0 -82 A82 82 0 1 0 82 0" stroke="#1E8E5A" stroke-opacity=".35" stroke-width="34"/>
-    <circle cx="150" cy="0" r="27" fill="#1E8E5A" stroke="none"/>
-    <circle cx="0" cy="0" r="20" fill="#15201A" stroke="none"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4E8566"/>
+      <stop offset=".55" stop-color="#2E5E46"/>
+      <stop offset="1" stop-color="#1F4533"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".28" cy=".22" r=".75">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#CFE6D3"/>
+      <stop offset="1" stop-color="#9CC9A6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <g transform="translate(250 262)" fill="none" stroke-linecap="round">
+    <!-- trajectoire : un cercle qui s'ouvre et se resserre vers un point -->
+    <path d="M0 -146 A146 146 0 1 0 146 0" stroke="#F4F1E9" stroke-width="30"/>
+    <path d="M0 -80 A80 80 0 1 0 80 0" stroke="#F4F1E9" stroke-opacity=".42" stroke-width="30"/>
+    <circle cx="0" cy="0" r="19" fill="#F4F1E9" stroke="none"/>
+    <!-- feuille au bout de la trajectoire -->
+    <g transform="translate(146 2) rotate(-50) scale(1.3)">
+      <path d="M0 0C10-40 44-64 92-60C88-16 52 8 0 0Z" fill="url(#leaf)" stroke="none"/>
+      <path d="M6 -4C30-22 52-36 78-50" stroke="#2E5E46" stroke-opacity=".5" stroke-width="4"/>
+    </g>
   </g>
 </svg>
