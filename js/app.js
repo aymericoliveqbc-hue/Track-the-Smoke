@@ -64,11 +64,16 @@ function render() {
   document.getElementById('demo-ribbon').hidden = !isDemo();
 }
 
+const THEME_BG = { light: '#F6F4EE', dark: '#151913' };
+const darkQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+darkQuery?.addEventListener?.('change', () => { if (state.settings?.theme === 'auto') applyTheme(); });
+
+/** Clair (par défaut), sombre, ou automatique selon le réglage de l'appareil. */
 export function applyTheme() {
-  // Thème unique, clair (blanc & vert).
-  const mode = 'light';
+  const pref = state.settings?.theme || 'light';
+  const mode = pref === 'auto' ? (darkQuery?.matches ? 'dark' : 'light') : pref === 'dark' ? 'dark' : 'light';
   document.documentElement.dataset.theme = mode;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#F5F7F6');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_BG[mode]);
 }
 
 function buildShell() {

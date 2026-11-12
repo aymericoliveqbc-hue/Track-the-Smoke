@@ -364,6 +364,7 @@ function prefs() {
   const s = state.settings;
   return h('div', { class: 'stack' }, back('Préférences'),
     card(
+      field('Apparence', segmented([{ id: 'light', label: 'Clair' }, { id: 'dark', label: 'Sombre' }, { id: 'auto', label: 'Auto' }], s.theme || 'light', (v) => saveSettings({ theme: v })), 'Auto suit le réglage de ton téléphone.'),
       field('Devise', select([{ id: 'EUR', label: 'Euro (€)' }, { id: 'CHF', label: 'Franc suisse (CHF)' }, { id: 'GBP', label: 'Livre (£)' }, { id: 'USD', label: 'Dollar ($)' }, { id: 'CAD', label: 'Dollar canadien ($ CA)' }], s.currency, (v) => saveSettings({ currency: v || 'EUR' }))),
       field('Méthode de saisie par défaut', segmented([{ id: 'auto', label: 'Auto' }, { id: 'estimated', label: 'Estimée' }, { id: 'weighed', label: 'Pesée' }], s.defaultMethod || 'auto', (v) => saveSettings({ defaultMethod: v }), { small: true }), 'Tu peux toujours changer de méthode pour chaque saisie.'),
       field('Molécule habituelle', select(MOLECULES.map((m) => ({ id: m.id, label: m.label })), s.defaultMolecule || 'cbd', (v) => saveSettings({ defaultMolecule: v || 'cbd', quickDefaults: Object.fromEntries(Object.entries(s.quickDefaults || {}).map(([k, q]) => [k, q.cbd ? { ...q, cbd: { ...q.cbd, molecule: v || 'cbd' } } : q])) })), 'Utilisée pour les joints enregistrés en un geste.'),
@@ -379,7 +380,7 @@ function health() {
 
 function about() {
   return h('div', { class: 'stack' }, back('À propos'),
-    card(h('div', { class: 'about' }, logo(56), h('h2', null, 'TRACK THE SMOKE'), h('p', { class: 'muted' }, 'Know your habits. Take back control.'), h('p', { class: 'muted small' }, 'Version 1.0 · application web installable, fonctionne hors ligne.'))),
+    card(h('div', { class: 'about' }, logo(56), h('h2', null, 'TRACK THE SMOKE'), h('p', { class: 'muted' }, 'Know your habits. Take back control.'), h('p', { class: 'muted small' }, 'Version 2.0 · application web installable, fonctionne hors ligne.'))),
     card(h('p', null, 'Outil personnel de suivi de la consommation de tabac et de CBD, des envies, des dépenses et du sommeil, pour réduire à ton rythme et, si tu le souhaites, arrêter.'),
       h('p', { class: 'muted' }, 'Cette application ne fournit aucun diagnostic médical et ne remplace pas un professionnel de santé.')),
     card(h('p', { class: 'muted small' }, 'Pour l’installer sur iPhone : ouvre-la dans Safari, touche le bouton Partager puis « Sur l’écran d’accueil ».')));

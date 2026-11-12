@@ -2,7 +2,7 @@
 // Stratégie « réseau d'abord, cache en secours » pour l'application (aucune donnée personnelle
 // n'est mise en cache ici : elles vivent dans IndexedDB).
 
-const VERSION = 'tts-v3.0.1';
+const VERSION = 'tts-v3.1.0';
 const ASSETS = [
   './',
   './index.html',
