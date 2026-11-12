@@ -2,6 +2,7 @@
 
 import { h, haptic, fill } from './dom.js';
 import { icon } from './icons.js';
+import { art } from './art.js';
 import { parseDecimal, toInput, round2, isNum } from '../core/format.js';
 
 /* ----------------------------- Feuilles ----------------------------- */
@@ -61,12 +62,25 @@ export function closeAllSheets() { [...sheetStack].reverse().forEach((c) => c())
 
 export function toast(message, { action, onAction, tone = 'default', duration = 3200 } = {}) {
   const root = document.getElementById('toasts');
-  const el = h('div', { class: `toast toast-${tone}` }, h('span', null, message),
+  const ic = h('span', { class: 'toast-ic' });
+  ic.innerHTML = tone === 'warn'
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 7v6"/><path d="M12 17h.01"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+  const el = h('div', { class: `toast toast-${tone}`, role: 'status' }, ic, h('span', null, message),
     action ? h('button', { class: 'toast-action', onclick: () => { onAction?.(); dismiss(); } }, action) : null);
   root.append(el);
   requestAnimationFrame(() => el.classList.add('on'));
-  const dismiss = () => { el.classList.remove('on'); setTimeout(() => el.remove(), 250); };
+  const dismiss = () => { el.classList.remove('on'); setTimeout(() => el.remove(), 260); };
   setTimeout(dismiss, duration);
+}
+
+/** Retour visuel d'un enregistrement : pulsation du bouton central. */
+export function celebrate() {
+  const fab = document.querySelector('.tab-add');
+  if (!fab) return;
+  fab.classList.remove('pulse');
+  void fab.offsetWidth;
+  fab.classList.add('pulse');
 }
 
 /* ----------------------------- Confirmation ----------------------------- */
@@ -223,17 +237,18 @@ export function statTile({ label, value, sub, tone, onclick, extra }) {
     extra || null);
 }
 
+const EMPTY_ART = { stats: 'stats', journal: 'craving', goals: 'goals', wallet: 'money', moon: 'night', box: 'stock', wave: 'craving', timer: 'session', flag: 'project', tag: 'purchase' };
 export function emptyState({ icon: ic = 'sparkle', title, text, action }) {
   return h('div', { class: 'empty' },
-    h('div', { class: 'empty-icon' }, icon(ic, 26)),
+    EMPTY_ART[ic] ? art(EMPTY_ART[ic], 64) : h('div', { class: 'empty-icon' }, icon(ic, 26)),
     h('h3', null, title),
     text ? h('p', null, text) : null,
     action || null);
 }
 
-export function listRow({ icon: ic, iconTone, title, sub, right, onclick, chevron = !!onclick }) {
+export function listRow({ icon: ic, art: artName, iconTone, title, sub, right, onclick, chevron = !!onclick }) {
   return h(onclick ? 'button' : 'div', { class: 'row', onclick },
-    ic ? h('span', { class: `row-icon tone-${iconTone || 'violet'}` }, icon(ic, 18)) : null,
+    artName ? art(artName, 38) : ic ? h('span', { class: `row-icon tone-${iconTone || 'violet'}` }, icon(ic, 18)) : null,
     h('span', { class: 'row-main' }, h('span', { class: 'row-title' }, title), sub ? h('span', { class: 'row-sub' }, sub) : null),
     right != null ? h('span', { class: 'row-right' }, right) : null,
     chevron ? icon('chevron', 16, 'row-chevron') : null);

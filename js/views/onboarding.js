@@ -2,6 +2,7 @@
 
 import { h, fill } from '../ui/dom.js';
 import { icon, logo } from '../ui/icons.js';
+import { sprig } from '../ui/art.js';
 import { toast } from '../ui/components.js';
 import { beforeFields, applyBeforePrices } from './before.js';
 import { renderSetup } from './setup.js';
@@ -33,7 +34,7 @@ export function renderOnboarding(onDone) {
 
   const steps = [
     () => h('div', { class: 'ob-step' },
-      h('div', { class: 'ob-logo' }, logo(72)),
+      h('div', { class: 'ob-logo' }, sprig(110), logo(72)),
       h('h1', null, 'TRACK THE SMOKE'),
       h('p', { class: 'ob-tag' }, 'Understand your habits. Track your consumption. Take control.'),
       h('ul', { class: 'checklist' },

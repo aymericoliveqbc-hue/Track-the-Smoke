@@ -16,8 +16,9 @@ Le domaine métier (`js/domain/`) est pur et indépendant du DOM : il pourrait �
 
 ```
 index.html, manifest.webmanifest, sw.js
-css/app.css                 Design system (tokens, composants)
+css/app.css                 Système de design (tokens clair/sombre, composants, pages, mouvement)
 assets/icons/               Logo SVG + PNG (192, 512, maskable, apple-touch)
+assets/fonts/               Manrope + Fraunces (woff2 variables, licence OFL, auto-hébergées)
 js/app.js                   Démarrage, routage (#/vue/sous-vue), verrouillage, SW
 js/app-reminders.js         Rappels dans l'app + notifications système
 js/core/
@@ -48,6 +49,7 @@ js/domain/                  Logique métier pure, testée
   backup.js                 Export / import / CSV
   demo.js                   Jeu de démonstration
 js/ui/                      DOM, icônes, graphiques SVG, composants, formulaires
+js/ui/art.js                Illustrations vectorielles (méthodes, événements) et ornement botanique
 js/ui/record.js             Enregistrement universel (gestes, sessions, puffs, saisie détaillée)
 js/views/                   Accueil, Journal, Progrès, Objectifs, Réglages, Configuration (setup.js),
                             Mes moyennes, Analyse IA, Projets, Paquets, Santé, Onboarding
@@ -163,7 +165,7 @@ Rappels configurables (journal, nuit, bilan hebdomadaire, objectifs, bilan finan
 
 **Migration** (`migrations.js`, `store.runMigrations`) : instantané `backup_premigration_v2` dans le store `backups`, puis `migrateState` (pure, idempotente), appliquée aussi à l'import d'une sauvegarde V1. Voir `docs/V2-AUDIT.md`.
 
-**Apparence** : clair (blanc cassé `#F6F4EE`, cartes blanches, texte anthracite `#252A27`, vert forêt `#2D6A4F`, sauge `#8FAF98`), sombre, ou automatique (`prefers-color-scheme`, suivi en direct).
+**Apparence** : clair (ivoire `#F4F1E9`, cartes blanches, anthracite `#22272A`, vert forêt `#2E5E46`, sauge `#7F9D88`), sombre (vert-noir `#0D1310`, cartes ardoise `#17201B`, sauge lumineux `#A3D0AE`), ou automatique (`prefers-color-scheme`, suivi en direct). Détails : `docs/DESIGN-SYSTEM.md`.
 
 ## 8. Apple Santé
 
@@ -176,7 +178,7 @@ Conversion (`samplesToNights`) : rattachement à la soirée (avant midi → veil
 
 ## 9. Graphiques
 
-SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de chaleur, nuage de points, barres de répartition, anneaux. Infobulle au toucher/survol, valeurs manquantes jamais dessinées comme des zéros, légendes systématiques au-delà d'une série. Couleurs pilotées par le thème (variables CSS `--c1…--c4`) : vert (CBD, envies résistées), bleu (tabac), orange, violet. Clair `#1E8E5A #3F74B5 #D0703A #8E6AAE` sur cartes blanches, sombre `#4FA877 #5E92D6 #D9744A #9A7CC2` sur `#1C211B` : contraste ≥ 3:1 et séparation daltonisme validés dans les deux modes.
+SVG maison (`js/ui/charts.js`) : barres, barres empilées, courbes, carte de chaleur, nuage de points, barres de répartition, anneaux. Infobulle au toucher/survol, valeurs manquantes jamais dessinées comme des zéros, légendes systématiques au-delà d'une série. Couleurs pilotées par le thème (variables CSS `--c1…--c4`) : feuille (CBD, envies résistées), ardoise (tabac), terre cuite, bruyère. Clair `#2F855A #4A72A6 #A9572D #8767A6` sur cartes blanches, sombre `#62BE8A #77A2DB #E58C5E #AE90D6` sur `#17201B`. Barres en dégradé avec apparition animée, grille pointillée, courbes tracées progressivement, anneaux animés (désactivés si « réduire les animations »).
 
 ## 10. Tests
 

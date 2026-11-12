@@ -2,7 +2,7 @@
 
 **Know your habits. Take back control.**
 
-Application mobile personnelle (PWA installable sur iPhone, 100 % hors ligne, vert forêt et sauge sur blanc cassé, mode sombre facultatif) pour **comprendre, quantifier, réduire ou arrêter** sa consommation — cigarettes, roulées, joints, CBD et autres cannabinoïdes, vape, puff, cigare, cigarillo, pipe, chicha ou méthode personnalisée : consommations et sessions, envies, achats et budget, stocks, sommeil, objectifs par méthode.
+Application mobile personnelle (PWA installable sur iPhone, 100 % hors ligne) au design « nature premium » — vert forêt et sauge sur ivoire, mode sombre vert-noir, illustrations dédiées à chaque méthode — pour **comprendre, quantifier, réduire ou arrêter** sa consommation — cigarettes, roulées, joints, CBD et autres cannabinoïdes, vape, puff, cigare, cigarillo, pipe, chicha ou méthode personnalisée : consommations et sessions, envies, achats et budget, stocks, sommeil, objectifs par méthode.
 
 - Aucun compte, aucun serveur, aucune publicité, aucun traceur : les données restent sur l'appareil (IndexedDB). L'assistant IA est facultatif et n'envoie rien sans accord explicite.
 - Jamais de culpabilisation : une consommation n'efface jamais les progrès, aucun compteur n'est remis à zéro.
@@ -47,8 +47,9 @@ Navigation : **Accueil · Journal · ＋ · Progrès · Réglages**.
 
 Les données d'une version précédente sont **migrées automatiquement** (instantané conservé avant migration) ; rien n'est supprimé ni réécrit.
 
-## Documentation technique
+## Documentation
 
-Voir [`docs/TECHNICAL.md`](docs/TECHNICAL.md).
+- Technique : [`docs/TECHNICAL.md`](docs/TECHNICAL.md)
+- Système de design (couleurs, typographie, illustrations, composants, mouvement) : [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md)
 
 > Cette application est un outil de suivi personnel. Elle ne fournit aucun diagnostic médical et ne remplace pas un professionnel de santé.

@@ -2,6 +2,7 @@
 
 import { h, fill } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
+import { art } from '../ui/art.js';
 import { card, segmented, chips, emptyState, openSheet, sectionTitle, badge } from '../ui/components.js';
 import { entryRow, nightRow, entriesOfDay, entryTitle } from '../ui/entries.js';
 import { openEntryForm, openCravingForm, openNightForm, openQuickAdd, openPurchaseForm } from '../ui/forms.js';
@@ -71,9 +72,9 @@ function purchaseMatches(p) {
 
 function purchaseRow(p) {
   const prod = productById(p.productId);
-  return h('button', { class: 'tl-item', onclick: () => openPurchaseForm({ purchase: p }) },
+  return h('button', { class: 'tl-item ev-purchase', onclick: () => openPurchaseForm({ purchase: p }) },
     h('span', { class: 'tl-time' }, 'achat'),
-    h('span', { class: 'tl-dot tone-orange' }, icon('wallet', 14)),
+    art('purchase', 40),
     h('span', { class: 'tl-main' }, h('span', { class: 'tl-title' }, prod?.name || 'Achat'), h('span', { class: 'tl-sub' }, `${p.packCount > 1 ? `${p.packCount} × ` : ''}${fmtNum(p.packSize, 1)} ${prod?.kind === 'accessory' || prod?.kind === 'cigarettes' ? 'u.' : prod?.unit || ''}${p.supplier ? ' · ' + p.supplier : ''}`)),
     h('span', { class: 'tl-cost' }, fmtMoney((p.packPrice || 0) * (p.packCount || 1))));
 }

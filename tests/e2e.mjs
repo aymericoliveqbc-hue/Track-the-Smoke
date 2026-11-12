@@ -99,7 +99,7 @@ const tiles2 = await hero(page);
 ok(/0,55\s*g tabac/.test(tiles2), 'S7 tabac recalculé 0,55 g après modification');
 ok(tiles2.replace(/\s/g, '').includes('1,08€'), 'S7 dépense recalculée (attendu 0,95 + 0,13 = 1,08 €)');
 const sav = await page.locator('.savings').innerText();
-ok(/Économisé depuis le début/.test(sav) && /110\s*€\/mois/.test(sav), 'S13 économies affichées en direct par rapport à avant (110 €/mois)');
+ok(/Économisé depuis le début/i.test(sav) && /110\s*€\/mois/.test(sav), 'S13 économies affichées en direct par rapport à avant (110 €/mois)');
 // SCÉNARIO 8
 await page.goto(`${URL_BASE}/#/profile/data`);
 await page.waitForTimeout(400);

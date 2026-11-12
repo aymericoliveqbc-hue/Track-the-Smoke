@@ -2,6 +2,7 @@
 
 import { h, fill } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
+import { art } from '../ui/art.js';
 import { card, cardHead, field, segmented, select, decimalInput, toast, openSheet, confirmDialog, note, emptyState } from '../ui/components.js';
 import { state, save, remove, saveSettings, currentCalibration, productById } from '../core/store.js';
 import { nowLocal, dayKey, formatDayShort, diffDays } from '../core/dates.js';
@@ -52,7 +53,7 @@ function packRow(pack, compact = false) {
   const { r, frac, left } = gauge(pack);
   return h('div', { class: 'pack' },
     h('div', { class: 'pack-head' },
-      h('span', { class: `row-icon tone-${pack.kind === 'tobacco' ? 'blue' : 'green'}` }, icon(pack.kind === 'tobacco' ? 'rolled' : pack.kind === 'liquid' ? 'vape' : 'leafless', 16)),
+      art(pack.kind === 'tobacco' ? 'pack' : pack.kind === 'liquid' ? 'vape' : 'cbd', 40),
       h('div', { class: 'grow' }, h('b', null, prod?.name || KIND_LABEL[pack.kind]), h('span', { class: 'muted small' }, `${fmtU(pack.size, pack.kind, 1)} · ouvert le ${formatDayShort(pack.openedAt.slice(0, 10))}`)),
       h('div', { class: 'pack-left' }, h('b', null, `≈ ${fmtU(r.remaining, pack.kind, 1)}`), h('span', { class: 'muted small' }, left != null ? `~${left} ${pack.kind === 'tobacco' ? 'roulées' : pack.kind === 'liquid' ? 'sessions' : 'joints'}` : ''))),
     h('div', { class: 'pack-bar' }, h('i', { style: { width: `${Math.round(frac * 100)}%` }, class: pack.kind === 'tobacco' ? 'tob' : 'cbd' })),
@@ -86,7 +87,7 @@ export function renderPacks(backHeader) {
         const segs = currentCalibration().segments.filter((s) => s.packId === p.id);
         const n = segs.reduce((t, s) => t + s.count, 0);
         return h('div', { class: 'row' },
-          h('span', { class: `row-icon tone-${p.kind === 'tobacco' ? 'blue' : 'green'}` }, icon(p.kind === 'tobacco' ? 'rolled' : 'leafless', 16)),
+          art(p.kind === 'tobacco' ? 'pack' : 'cbd', 40),
           h('span', { class: 'row-main' }, h('span', { class: 'row-title' }, `${productById(p.productId)?.name || KIND_LABEL[p.kind]} · ${fmtU(p.size, p.kind, 1)}`),
             h('span', { class: 'row-sub' }, `${formatDayShort(p.openedAt.slice(0, 10))} → ${formatDayShort(p.finishedAt.slice(0, 10))} · ${diffDays(p.openedAt.slice(0, 10), p.finishedAt.slice(0, 10)) + 1} j${n ? ` · ${n} conso.` : ''}`)),
           h('button', { class: 'icon-btn', 'aria-label': 'Supprimer ce paquet', onclick: async () => {

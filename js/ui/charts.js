@@ -11,6 +11,21 @@ export const COLORS = {
 };
 
 const W = 340;
+let GID = 0;
+
+/** Dégradé vertical (haut opaque → bas adouci) pour une couleur de thème. */
+function vGradient(color, top = 1, bottom = 0.62) {
+  const id = `g${++GID}`;
+  const el = h('defs', null, h('linearGradient', { id, x1: 0, y1: 0, x2: 0, y2: 1 },
+    h('stop', { offset: '0%', 'stop-color': color, 'stop-opacity': top }),
+    h('stop', { offset: '100%', 'stop-color': color, 'stop-opacity': bottom })));
+  return { id, el, url: `url(#${id})` };
+}
+
+/** Lignes de grille : base pleine, repères en pointillés. */
+function gridLine(x1, x2, y, i) {
+  return h('line', { x1, x2, y1: y, y2: y, class: i === 0 ? 'base-line' : 'grid-line' });
+}
 
 function wrap(svg, height, legend) {
   const tip = h('div', { class: 'chart-tip', role: 'status' });
@@ -77,9 +92,11 @@ export function barChart(data, opts = {}) {
   const bw = innerW / Math.max(1, data.length);
   const gap = Math.min(6, Math.max(2, bw * 0.28));
   const svg = h('svg', { viewBox: `0 0 ${W} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': opts.aria || 'Graphique' });
+  const grad = vGradient(opts.color || COLORS.primary);
+  svg.append(grad.el);
   for (let i = 0; i <= 2; i++) {
     const y = padT + innerH - (innerH * i) / 2;
-    svg.append(h('line', { x1: padL, x2: W - 6, y1: y, y2: y, stroke: COLORS.grid }));
+    svg.append(gridLine(padL, W - 6, y, i));
     svg.append(h('text', { x: padL - 6, y: y + 3, 'text-anchor': 'end', class: 'axis' }, fmt((max * i) / 2)));
   }
   const marks = [];
@@ -92,7 +109,7 @@ export function barChart(data, opts = {}) {
       return;
     }
     const bh = (d.value / max) * innerH;
-    const p = h('path', { d: roundedTopBar(x, padT + innerH - bh, w, Math.max(bh, d.value > 0 ? 2 : 0)), fill: d.color || opts.color || COLORS.primary, class: 'mark', opacity: opts.highlight != null && opts.highlight !== i ? 0.55 : 1 });
+    const p = h('path', { d: roundedTopBar(x, padT + innerH - bh, w, Math.max(bh, d.value > 0 ? 2 : 0), Math.min(6, w / 2)), fill: d.color || grad.url, class: 'mark grow-bar', opacity: opts.highlight != null && opts.highlight !== i ? 0.5 : 1, style: { animationDelay: `${Math.min(i * 14, 420)}ms` } });
     marks.push(p);
     svg.append(p);
   });
@@ -131,13 +148,13 @@ export function stackedBars(data, keys, opts = {}) {
   const svg = h('svg', { viewBox: `0 0 ${W} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': opts.aria || 'Graphique empilé' });
   for (let i = 0; i <= 2; i++) {
     const y = padT + innerH - (innerH * i) / 2;
-    svg.append(h('line', { x1: padL, x2: W - 6, y1: y, y2: y, stroke: COLORS.grid }));
+    svg.append(gridLine(padL, W - 6, y, i));
     svg.append(h('text', { x: padL - 6, y: y + 3, 'text-anchor': 'end', class: 'axis' }, fmt((max * i) / 2)));
   }
   const groups = [];
   data.forEach((d, i) => {
     const x = padL + i * bw + gap / 2; const w = bw - gap;
-    const g = h('g', { class: 'mark' });
+    const g = h('g', { class: 'mark grow-bar', style: { animationDelay: `${Math.min(i * 14, 420)}ms` } });
     groups.push(g);
     if (!d.parts) { svg.append(h('rect', { x, y: padT + innerH - 2, width: w, height: 2, rx: 1, fill: COLORS.muted, opacity: 0.5 })); return; }
     let y = padT + innerH;
@@ -147,7 +164,7 @@ export function stackedBars(data, keys, opts = {}) {
       const top = idx === nonZero.length - 1;
       const yy = y - bh;
       const segH = Math.max(0, bh - (idx > 0 ? 2 : 0));
-      g.append(top ? h('path', { d: roundedTopBar(x, yy, w, segH), fill: keys[k].color })
+      g.append(top ? h('path', { d: roundedTopBar(x, yy, w, segH, Math.min(6, w / 2)), fill: keys[k].color })
         : h('rect', { x, y: yy, width: w, height: segH, fill: keys[k].color }));
       y = yy;
     });
@@ -183,26 +200,33 @@ export function lineChart(series, opts = {}) {
   const svg = h('svg', { viewBox: `0 0 ${W} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': opts.aria || 'Courbe' });
   for (let i = 0; i <= 2; i++) {
     const v = min + ((max - min) * i) / 2;
-    svg.append(h('line', { x1: padL, x2: W - 10, y1: Y(v), y2: Y(v), stroke: COLORS.grid }));
+    svg.append(gridLine(padL, W - 10, Y(v), i));
     svg.append(h('text', { x: padL - 6, y: Y(v) + 3, 'text-anchor': 'end', class: 'axis' }, fmt(v)));
   }
   if (opts.target != null) svg.append(h('line', { x1: padL, x2: W - 10, y1: Y(opts.target), y2: Y(opts.target), stroke: COLORS.green, 'stroke-dasharray': '4 4', 'stroke-width': 1.2 }));
   svg.append(h('line', { class: 'crosshair', x1: 0, x2: 0, y1: padT, y2: padT + innerH, stroke: COLORS.axis, 'stroke-width': 1, style: 'opacity:0' }));
   for (const s of series) {
-    let d = ''; let pen = false;
+    let d = ''; let pen = false; let len = 0; let last = null;
     s.points.forEach((p, i) => {
-      if (p.value == null) { pen = false; return; }
-      d += `${pen ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.value).toFixed(1)}`; pen = true;
+      if (p.value == null) { pen = false; last = null; return; }
+      const px = X(i); const py = Y(p.value);
+      if (last) len += Math.hypot(px - last[0], py - last[1]);
+      d += `${pen ? 'L' : 'M'}${px.toFixed(1)},${py.toFixed(1)}`; pen = true; last = [px, py];
     });
     if (opts.area && series.length === 1) {
       const pts = s.points.map((p, i) => [p, i]).filter(([p]) => p.value != null);
-      if (pts.length > 1) svg.append(h('path', { d: `${d}L${X(pts[pts.length - 1][1])},${Y(min)}L${X(pts[0][1])},${Y(min)}Z`, fill: s.color, opacity: 0.12 }));
+      if (pts.length > 1) {
+        const g = vGradient(s.color, 0.24, 0);
+        svg.append(g.el, h('path', { d: `${d}L${X(pts[pts.length - 1][1])},${Y(min)}L${X(pts[0][1])},${Y(min)}Z`, fill: g.url, class: 'fade-in' }));
+      }
     }
-    svg.append(h('path', { d, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    const line = h('path', { d, fill: 'none', stroke: s.color, 'stroke-width': 2.2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', class: 'draw-line' });
+    line.style.setProperty('--len', String(Math.ceil(len) + 2));
+    svg.append(line);
     s.points.forEach((p, i) => {
       if (p.value == null) return;
       const isolated = (s.points[i - 1]?.value == null) && (s.points[i + 1]?.value == null);
-      if (isolated || n <= 14) svg.append(h('circle', { cx: X(i), cy: Y(p.value), r: n <= 14 ? 3 : 2.5, fill: s.color, stroke: COLORS.surface, 'stroke-width': 1.5 }));
+      if (isolated || n <= 14) svg.append(h('circle', { cx: X(i), cy: Y(p.value), r: n <= 14 ? 3.4 : 2.6, fill: s.color, stroke: COLORS.surface, 'stroke-width': 2, class: 'fade-in' }));
     });
   }
   const pts0 = series[0]?.points || [];
@@ -267,13 +291,13 @@ export function scatter(points, opts = {}) {
   const svg = h('svg', { viewBox: `0 0 ${W} ${height}`, class: 'chart-svg', role: 'img', 'aria-label': opts.aria || 'Nuage de points' });
   for (let i = 0; i <= 2; i++) {
     const vy = (ymax * i) / 2; const vx = (xmax * i) / 2;
-    svg.append(h('line', { x1: padL, x2: W - padR, y1: Y(vy), y2: Y(vy), stroke: COLORS.grid }));
+    svg.append(gridLine(padL, W - padR, Y(vy), i));
     svg.append(h('text', { x: padL - 6, y: Y(vy) + 3, 'text-anchor': 'end', class: 'axis' }, (opts.fy || String)(vy)));
     svg.append(h('text', { x: X(vx), y: padT + innerH + 13, 'text-anchor': 'middle', class: 'axis' }, (opts.fx || String)(vx)));
   }
   svg.append(h('text', { x: W - padR, y: height - 2, 'text-anchor': 'end', class: 'axis' }, opts.xLabel || ''));
   const dots = points.map((p) => {
-    const c = h('circle', { cx: X(p.x), cy: Y(p.y), r: 4.5, fill: opts.color || COLORS.blue, 'fill-opacity': 0.85, stroke: COLORS.surface, 'stroke-width': 2, class: 'mark' });
+    const c = h('circle', { cx: X(p.x), cy: Y(p.y), r: 5, fill: opts.color || COLORS.blue, 'fill-opacity': 0.82, stroke: COLORS.surface, 'stroke-width': 2, class: 'mark fade-in' });
     svg.append(c);
     return c;
   });
@@ -321,7 +345,13 @@ export function ring(progress, size = 64, color = COLORS.primary, label = '') {
   const p = Math.max(0, Math.min(1, progress ?? 0));
   return h('div', { class: 'ring', style: { width: `${size}px`, height: `${size}px` } },
     h('svg', { viewBox: `0 0 ${size} ${size}`, width: size, height: size },
-      h('circle', { cx: size / 2, cy: size / 2, r, stroke: 'var(--surface-2)', 'stroke-width': 5, fill: 'none' }),
-      h('circle', { cx: size / 2, cy: size / 2, r, stroke: color, 'stroke-width': 5, fill: 'none', 'stroke-linecap': 'round', 'stroke-dasharray': `${c * p} ${c}`, transform: `rotate(-90 ${size / 2} ${size / 2})` })),
+      h('circle', { cx: size / 2, cy: size / 2, r, stroke: 'var(--surface-2)', 'stroke-width': 5, fill: 'none', opacity: 0.8 }),
+      animateRing(h('circle', { cx: size / 2, cy: size / 2, r, stroke: color, 'stroke-width': 5, fill: 'none', 'stroke-linecap': 'round', 'stroke-dasharray': `0 ${c}`, transform: `rotate(-90 ${size / 2} ${size / 2})`, class: 'ring-val' }), `${c * p} ${c}`)),
     h('span', { class: 'ring-label' }, label));
+}
+
+/** Remplit l'anneau après son insertion (transition CSS ; instantané si animations réduites). */
+function animateRing(circle, target) {
+  setTimeout(() => circle.setAttribute('stroke-dasharray', target), 60);
+  return circle;
 }

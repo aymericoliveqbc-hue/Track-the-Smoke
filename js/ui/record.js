@@ -4,7 +4,8 @@
 
 import { h, haptic, fill } from './dom.js';
 import { icon } from './icons.js';
-import { openSheet, toast, confirmDialog, field, textInput, textArea, decimalInput, segmented, chips, toggle, select, note, badge } from './components.js';
+import { art } from './art.js';
+import { openSheet, toast, celebrate, confirmDialog, field, textInput, textArea, decimalInput, segmented, chips, toggle, select, note, badge } from './components.js';
 import { state, save, remove, saveSettings, derived, catById, productById, currentCalibration } from '../core/store.js';
 import { nowLocal, dayKey, timeKey, formatDuration, minutesBetween, formatElapsed, minutesSince } from '../core/dates.js';
 import { fmtGrams, fmtMoney, fmtQty, isNum, round2, UNITS, fmtNum } from '../core/format.js';
@@ -127,6 +128,7 @@ async function persistEntry(entry, cat, { remember = true } = {}) {
   entry.updatedAt = new Date().toISOString();
   entry.accessories = normalizeAccessories(entry.accessories);
   await save('entries', entry);
+  celebrate();
   if (entry.cravingId) await linkCraving(entry);
   if (!remember || entry.exceptional) return; // une consommation exceptionnelle ne change pas les raccourcis
   const pick = (o, keys) => (o ? Object.fromEntries(keys.map((k) => [k, o[k]])) : undefined);
@@ -155,7 +157,7 @@ export function openQuickAdd() {
       const cats = orderedCategories();
       const go = (fn) => () => { close(); fn(); };
       const tile = (label, ic, fn, sub, cls = '') => h('button', { class: `add-tile ${cls}`, onclick: go(fn) },
-        h('span', { class: 'add-icon' }, icon(ic, 26)), h('span', { class: 'add-label' }, label), sub ? h('span', { class: 'add-sub' }, sub) : null);
+        h('span', { class: 'add-icon art-wrap' }, art(ic, 52)), h('span', { class: 'add-label' }, label), sub ? h('span', { class: 'add-sub' }, sub) : null);
       return h('div', { class: 'stack' },
         h('div', { class: 'add-grid' },
           ...cats.map((c) => tile(c.short || c.name, c.icon, () => quickLog(c.id), instantHint(c), c.id === habits().primary ? 'tile-primary' : '')),
@@ -190,7 +192,7 @@ export function openOtherConsumption() {
       h('p', { class: 'muted' }, 'Pour une consommation inhabituelle : elle apparaît dans le journal et les statistiques, sans modifier tes habitudes ni tes raccourcis.'),
       h('div', { class: 'add-grid' }, [...METHOD_CATALOG.map((m) => catById(m.id)).filter(Boolean), ...state.categories.filter((c) => !c.system && !c.archived)].map((c) => h('button', {
         class: 'add-tile', onclick: () => { close(); openEntryForm({ categoryId: c.id, exceptional: true }); },
-      }, h('span', { class: 'add-icon' }, icon(c.icon, 24)), h('span', { class: 'add-label' }, c.short || c.name))))),
+      }, h('span', { class: 'add-icon art-wrap' }, art(c.icon, 52)), h('span', { class: 'add-label' }, c.short || c.name))))),
   });
 }
 
@@ -242,7 +244,7 @@ export function runningCard() {
     const min = minutesSince(e.at);
     return h('div', { class: 'running-row' },
       h('span', { class: 'running-dot' }),
-      h('span', { class: 'row-icon' }, icon(cat?.icon || 'custom', 16)),
+      art(cat?.icon || 'custom', 40, 'round'),
       h('div', { class: 'grow' }, h('b', null, `${cat?.short || cat?.name || 'Session'} en cours`), h('span', { class: 'muted small' }, `depuis ${e.at.slice(11)} · ${formatElapsed(min)}`)),
       h('button', { class: 'btn btn-primary btn-sm', onclick: () => openFinishSheet(e.id) }, 'Terminer'));
   }));
@@ -263,6 +265,7 @@ export function openFinishSheet(entryId) {
         try {
           const done = finishSession(e, at);
           await save('entries', { ...done, updatedAt: new Date().toISOString() });
+          celebrate();
           close(); haptic(15);
           toast(`Terminé · ${formatDuration(minutesBetween(e.at, at))}`);
         } catch (err) { toast(err.message, { tone: 'warn' }); }

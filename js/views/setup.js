@@ -6,6 +6,7 @@
 
 import { h, fill } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
+import { art } from '../ui/art.js';
 import { field, textInput, decimalInput, segmented, chips, toggle, toast, note } from '../ui/components.js';
 import { state, save, saveSettings, catById, productById } from '../core/store.js';
 import { dayKey } from '../core/dates.js';
@@ -122,7 +123,7 @@ export function renderSetup({ onDone, embedded = false } = {}) {
       h('div', { class: 'catalog' }, METHOD_CATALOG.map((m) => h('button', {
         class: `catalog-tile ${selected.has(m.id) ? 'on' : ''}`, 'aria-pressed': String(selected.has(m.id)),
         onclick: () => { if (selected.has(m.id)) selected.delete(m.id); else selected.add(m.id); render(); },
-      }, h('span', { class: 'catalog-ill' }, icon(m.icon, 30)), h('b', null, m.short), m.blurb ? h('span', { class: 'muted small' }, m.blurb) : null,
+      }, h('span', { class: 'catalog-ill art-wrap' }, art(m.icon, 52)), h('b', null, m.short), m.blurb ? h('span', { class: 'muted small' }, m.blurb) : null,
       h('span', { class: 'catalog-check' }, icon('check', 14))))),
       state.categories.filter((c) => !c.system && !c.archived).length ? h('div', { class: 'stack-sm' }, h('span', { class: 'field-label' }, 'Mes catégories personnalisées'),
         chips(state.categories.filter((c) => !c.system && !c.archived).map((c) => ({ id: c.id, label: c.name })), [...selected].filter((id) => !METHOD_CATALOG.find((m) => m.id === id)), (v) => {

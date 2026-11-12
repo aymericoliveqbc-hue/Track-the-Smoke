@@ -64,7 +64,7 @@ function render() {
   document.getElementById('demo-ribbon').hidden = !isDemo();
 }
 
-const THEME_BG = { light: '#F6F4EE', dark: '#151913' };
+const THEME_BG = { light: '#F4F1E9', dark: '#0D1310' };
 const darkQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 darkQuery?.addEventListener?.('change', () => { if (state.settings?.theme === 'auto') applyTheme(); });
 
@@ -80,7 +80,7 @@ function buildShell() {
   applyTheme();
   const tabbar = $('#tabbar');
   clear(tabbar).append(tab(NAV[0]), tab(NAV[1]),
-    h('button', { class: 'tab-add', 'aria-label': 'Enregistrer', onclick: () => { haptic(10); openQuickAdd(); } }, icon('plus', 26)),
+    h('button', { class: 'tab-add', 'aria-label': 'Enregistrer', onclick: () => { haptic(10); openQuickAdd(); } }, icon('plus', 26, 'bold')),
     tab(NAV[2]), tab(NAV[3]));
   $('#demo-ribbon').replaceChildren(icon('demo', 14), h('span', null, 'Mode démo · données fictives'),
     h('button', { onclick: async () => { await switchMode('main'); toast('Retour à tes données'); } }, 'Quitter'));

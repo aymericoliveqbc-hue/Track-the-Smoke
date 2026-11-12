@@ -2,6 +2,7 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
+import { art } from './art.js';
 import { badge } from './components.js';
 import { state, derived, catById } from '../core/store.js';
 import { fmtGrams, fmtMoney, fmtQty, isNum, fmtNum } from '../core/format.js';
@@ -22,9 +23,9 @@ export function entryTitle(e) {
 export function entryRow(e, { showDate = false } = {}) {
   if (e.kind === 'craving') {
     const resisted = e.outcome !== 'consumed';
-    return h('button', { class: 'tl-item', onclick: () => openCravingForm({ craving: e }) },
+    return h('button', { class: `tl-item ev-craving ${resisted ? 'resisted' : ''}`, onclick: () => openCravingForm({ craving: e }) },
       h('span', { class: 'tl-time' }, showDate ? `${e.at.slice(8, 10)}/${e.at.slice(5, 7)} ` : '', e.at.slice(11, 16)),
-      h('span', { class: `tl-dot ${resisted ? 'tone-green' : 'tone-orange'}` }, icon('wave', 14)),
+      art('craving', 40),
       h('span', { class: 'tl-main' },
         h('span', { class: 'tl-title' }, entryTitle(e)),
         h('span', { class: 'tl-sub' }, [
@@ -55,9 +56,10 @@ export function entryRow(e, { showDate = false } = {}) {
   if (e.completion && e.completion !== 'done') parts.push(h('span', null, labelOf(COMPLETION, e.completion).toLowerCase()));
   if (e.exceptional) parts.push(badge('exceptionnelle', 'muted'));
   if (e.context) parts.push(h('span', null, labelOf(CONTEXTS, e.context)));
-  return h('button', { class: 'tl-item', onclick: () => (e.status === 'running' ? openFinishSheet(e.id) : openEntryForm({ entry: e })) },
+  const session = e.status === 'running' || dur != null;
+  return h('button', { class: `tl-item ev-consumption ${session ? 'ev-session' : ''} ${e.status === 'running' ? 'is-running' : ''}`, onclick: () => (e.status === 'running' ? openFinishSheet(e.id) : openEntryForm({ entry: e })) },
     h('span', { class: 'tl-time' }, showDate ? `${e.at.slice(8, 10)}/${e.at.slice(5, 7)} ` : '', e.at.slice(11, 16)),
-    h('span', { class: `tl-dot tone-${cat?.color || 'violet'}` }, icon(cat?.icon || 'custom', 14)),
+    art(cat?.icon || 'custom', 40),
     h('span', { class: 'tl-main' },
       h('span', { class: 'tl-title' }, cat?.name || 'Consommation', e.note ? h('span', { class: 'tl-note' }, ' · ', e.note) : null),
       h('span', { class: 'tl-sub' }, parts.length ? parts.reduce((acc, p, i) => (i ? [...acc, ' · ', p] : [p]), []) : 'Quantités non renseignées')),
@@ -66,9 +68,9 @@ export function entryRow(e, { showDate = false } = {}) {
 
 export function nightRow(n) {
   const c = computeNight(n);
-  return h('button', { class: 'tl-item', onclick: () => openNightForm({ date: n.date }) },
+  return h('button', { class: 'tl-item ev-night', onclick: () => openNightForm({ date: n.date }) },
     h('span', { class: 'tl-time' }, n.bedTime || '—'),
-    h('span', { class: 'tl-dot tone-blue' }, icon('moon', 14)),
+    art('night', 40),
     h('span', { class: 'tl-main' },
       h('span', { class: 'tl-title' }, 'Nuit', isNum(n.quality) ? ` · qualité ${n.quality}/5` : '', n.source === 'apple-health' || n.health ? badge('Santé', 'orange') : null),
       h('span', { class: 'tl-sub' }, [

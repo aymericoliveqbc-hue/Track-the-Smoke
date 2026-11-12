@@ -41,15 +41,15 @@ export function renderProfile(sub) {
     isDemo() ? h('div', { class: 'banner banner-demo' }, icon('demo', 18), h('div', null, h('b', null, 'Mode démonstration'), h('span', null, 'Données fictives, totalement séparées de tes données personnelles.')),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { await switchMode('main'); toast('Retour à tes données'); } }, 'Quitter')) : null,
     card(
-      listRow({ icon: 'sparkle', title: 'Mes habitudes', sub: habitsSummary(), onclick: openHabits }),
-      listRow({ icon: 'box', iconTone: 'green', title: 'Mes paquets', sub: state.packs.some((p) => !p.finishedAt) ? `${state.packs.filter((p) => !p.finishedAt).length} en cours · calcul automatique des grammes` : 'Calcul automatique des grammes, sans balance', onclick: () => go('packs') }),
-      listRow({ icon: 'wallet', title: 'Mes dépenses avant l\u2019app', sub: beforeMonthly(s.before) ? `≈ ${fmtMoney(beforeMonthly(s.before).total, { digits: 0 })} par mois` : 'Pour mesurer tes économies dès maintenant', onclick: openBeforeForm }),
-      listRow({ icon: 'tag', title: 'Produits et prix', sub: `${state.products.filter((p) => !p.archived).length} produits`, onclick: () => go('products') }),
-      listRow({ icon: 'wallet', iconTone: 'orange', title: 'Achats', sub: `${state.purchases.length} achat(s) enregistré(s)`, onclick: () => go('purchases') }),
-      listRow({ icon: 'box', iconTone: 'green', title: 'Stocks', sub: s.stock?.enabled ? 'Suivi activé' : 'Facultatif · désactivé', onclick: () => go('stock') }),
+      listRow({ art: 'custom', title: 'Mes habitudes', sub: habitsSummary(), onclick: openHabits }),
+      listRow({ art: 'pack', title: 'Mes paquets', sub: state.packs.some((p) => !p.finishedAt) ? `${state.packs.filter((p) => !p.finishedAt).length} en cours · calcul automatique des grammes` : 'Calcul automatique des grammes, sans balance', onclick: () => go('packs') }),
+      listRow({ art: 'money', title: 'Mes dépenses avant l\u2019app', sub: beforeMonthly(s.before) ? `≈ ${fmtMoney(beforeMonthly(s.before).total, { digits: 0 })} par mois` : 'Pour mesurer tes économies dès maintenant', onclick: openBeforeForm }),
+      listRow({ art: 'cbd', title: 'Produits et prix', sub: `${state.products.filter((p) => !p.archived).length} produits`, onclick: () => go('products') }),
+      listRow({ art: 'purchase', title: 'Achats', sub: `${state.purchases.length} achat(s) enregistré(s)`, onclick: () => go('purchases') }),
+      listRow({ art: 'stock', title: 'Stocks', sub: s.stock?.enabled ? 'Suivi activé' : 'Facultatif · désactivé', onclick: () => go('stock') }),
       listRow({ icon: 'custom', iconTone: 'blue', title: 'Catégories', sub: `${state.categories.filter((c) => !c.archived).length} catégories`, onclick: () => go('categories') })),
     card(listRow({ icon: 'sparkle', title: 'Assistant IA', sub: hasAiKey() ? 'Activé · projets et analyses' : 'Facultatif · budgets de projets, analyses', onclick: () => go('ai') }),
-      listRow({ icon: 'heart', iconTone: 'orange', title: 'Apple Santé', sub: s.health?.lastImportAt ? `Sommeil importé le ${formatDayShort(s.health.lastImportAt.slice(0, 10))}` : 'Importer ton sommeil depuis l\u2019iPhone', onclick: () => go('applehealth') })),
+      listRow({ art: 'night', title: 'Apple Santé', sub: s.health?.lastImportAt ? `Sommeil importé le ${formatDayShort(s.health.lastImportAt.slice(0, 10))}` : 'Importer ton sommeil depuis l\u2019iPhone', onclick: () => go('applehealth') })),
     card(
       listRow({ icon: 'bell', title: 'Rappels et notifications', sub: s.notifications.inApp ? 'Rappels discrets activés' : 'Désactivés', onclick: () => go('notifications') }),
       listRow({ icon: 'lock', iconTone: 'green', title: 'Confidentialité et verrouillage', sub: s.privacy.lock === 'none' ? 'Aucun verrouillage' : s.privacy.lock === 'biometric' ? 'Face ID / Touch ID' : 'Code PIN', onclick: () => go('privacy') }),
@@ -61,7 +61,7 @@ export function renderProfile(sub) {
         if (isDemo()) { await switchMode('main'); toast('Retour à tes données'); }
         else if (await confirmDialog({ title: 'Ouvrir le mode démo ?', message: 'Des données fictives seront chargées dans un espace totalement séparé. Tes données personnelles ne sont ni modifiées ni mélangées.', confirm: 'Ouvrir la démo' })) { await switchMode('demo'); location.hash = '#/home'; toast('Mode démo'); }
       } }),
-      listRow({ icon: 'info', iconTone: 'blue', title: 'À propos', sub: 'TRACK THE SMOKE · version 1.0', onclick: () => go('about') })),
+      listRow({ icon: 'info', iconTone: 'blue', title: 'À propos', sub: 'TRACK THE SMOKE · version 2.1', onclick: () => go('about') })),
     h('p', { class: 'hint center' }, 'Tes données restent sur cet appareil. Aucune publicité, aucun traceur, aucun envoi.'));
 }
 
@@ -380,7 +380,7 @@ function health() {
 
 function about() {
   return h('div', { class: 'stack' }, back('À propos'),
-    card(h('div', { class: 'about' }, logo(56), h('h2', null, 'TRACK THE SMOKE'), h('p', { class: 'muted' }, 'Know your habits. Take back control.'), h('p', { class: 'muted small' }, 'Version 2.0 · application web installable, fonctionne hors ligne.'))),
+    card(h('div', { class: 'about' }, logo(56), h('h2', null, 'TRACK THE SMOKE'), h('p', { class: 'muted' }, 'Know your habits. Take back control.'), h('p', { class: 'muted small' }, 'Version 2.1 · application web installable, fonctionne hors ligne.'))),
     card(h('p', null, 'Outil personnel de suivi de la consommation de tabac et de CBD, des envies, des dépenses et du sommeil, pour réduire à ton rythme et, si tu le souhaites, arrêter.'),
       h('p', { class: 'muted' }, 'Cette application ne fournit aucun diagnostic médical et ne remplace pas un professionnel de santé.')),
     card(h('p', { class: 'muted small' }, 'Pour l’installer sur iPhone : ouvre-la dans Safari, touche le bouton Partager puis « Sur l’écran d’accueil ».')));
