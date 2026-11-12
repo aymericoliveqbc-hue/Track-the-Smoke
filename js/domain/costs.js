@@ -11,6 +11,7 @@
 
 import { isNum } from '../core/format.js';
 import { normalizeAccessories } from './models.js';
+import { components, moleculeClass } from './methods.js';
 
 export function unitPrice(packPrice, packSize) {
   if (!isNum(packPrice) || !isNum(packSize) || packPrice < 0 || packSize <= 0) return null;
@@ -66,36 +67,54 @@ export function resolveProduct(settings, kind, explicitId) {
   return settings?.defaultProducts?.[kind] ?? null;
 }
 
+const SUB_LABEL = {
+  tobacco: 'tabac', cbd: 'CBD', thc: 'THC', unknown: 'cannabinoïde', liquid: 'liquide', cigarettes: 'cigarettes', cigars: 'cigares', puffs: 'bouffées',
+};
+
+/** Poste de coût d'un composant (clé de ventilation). */
+export function costKey(c) {
+  if (c.substance === 'cannabis') return moleculeClass(c.molecule);
+  if (c.substance === 'units') return c.productKind === 'cigars' ? 'cigars' : 'cigarettes';
+  if (c.substance === 'puffs') return 'puffs';
+  return c.substance; // tobacco | liquid
+}
+
 /**
- * Coût d'une consommation.
- * @returns {{tobacco:number|null, cbd:number|null, accessories:number|null,
- *   total:number, complete:boolean, missing:string[]}}
+ * Coût d'une consommation, composant par composant (moteur unique).
+ * @returns {{tobacco, cbd, thc, unknown, liquid, cigarettes, cigars, puffs, accessories,
+ *   total, complete, missing:string[], nicotineMg:number|null, estimatedParts:string[]}}
  */
 export function entryCost(entry, ctx) {
-  const res = { tobacco: null, cbd: null, accessories: 0, total: 0, complete: true, missing: [] };
+  const res = {
+    tobacco: null, cbd: null, thc: null, unknown: null, liquid: null, cigarettes: null, cigars: null, puffs: null,
+    accessories: 0, total: 0, complete: true, missing: [], nicotineMg: null, estimatedParts: [],
+  };
   if (!entry || entry.kind !== 'consumption') return { ...res, accessories: null };
   const day = entry.at.slice(0, 10);
   const { index, settings } = ctx;
+  const add = (k, v) => { res[k] = (res[k] || 0) + v; res.total += v; };
 
-  if (entry.tobacco) {
-    const g = entry.tobacco.grams;
-    const pid = resolveProduct(settings, 'tobacco', entry.tobacco.productId);
-    const { price } = priceAt(index, pid, day);
-    if (!isNum(g)) { res.complete = false; res.missing.push('quantité de tabac'); }
-    else if (price == null) { res.complete = false; res.missing.push('prix du tabac'); }
-    else { res.tobacco = g * price; res.total += res.tobacco; }
-  }
-
-  if (entry.cbd) {
-    const q = entry.cbd.amount;
-    const pid = resolveProduct(settings, 'cbd', entry.cbd.productId);
+  for (const c of components(entry)) {
+    const key = costKey(c);
+    const label = SUB_LABEL[key] || 'produit';
+    const pid = resolveProduct(settings, c.productKind, c.productId);
     const slot = index.get(pid);
-    const { price } = priceAt(index, pid, day);
-    const unitOk = !slot || !entry.cbd.unit || slot.product.unit === entry.cbd.unit;
-    if (!isNum(q)) { res.complete = false; res.missing.push('quantité de CBD'); }
-    else if (!unitOk) { res.complete = false; res.missing.push('unité du CBD différente du produit'); }
-    else if (price == null) { res.complete = false; res.missing.push('prix du CBD'); }
-    else { res.cbd = q * price; res.total += res.cbd; }
+    let { price } = priceAt(index, pid, day);
+    const unitOk = !slot || c.substance !== 'cannabis' || !c.unit || slot.product.unit === c.unit;
+    if (!isNum(c.amount)) { res.complete = false; res.missing.push(`quantité de ${label}`); continue; }
+    if (!unitOk) { res.complete = false; res.missing.push(`unité du ${label} différente du produit`); continue; }
+    if (c.substance === 'puffs' && price != null) {
+      // Prix par bouffée : annoncé (estimation) tant que la puff n'est pas terminée,
+      // puis réel (prix / bouffées réellement enregistrées).
+      const f = ctx.puffActual?.get(pid);
+      if (f) price *= f; else res.estimatedParts.push('bouffées');
+    }
+    if (price == null) { res.complete = false; res.missing.push(`prix du ${label}`); }
+    else add(key, c.amount * price);
+    // Nicotine CONTENUE dans le produit consommé (≠ nicotine absorbée).
+    const prod = slot?.product;
+    if (c.substance === 'liquid' && isNum(prod?.nicotineMgPerMl)) res.nicotineMg = (res.nicotineMg || 0) + c.amount * prod.nicotineMgPerMl;
+    if (c.substance === 'units' && isNum(prod?.nicotinePerUnit)) res.nicotineMg = (res.nicotineMg || 0) + c.amount * prod.nicotinePerUnit;
   }
 
   for (const a of normalizeAccessories(entry.accessories)) {
@@ -110,6 +129,21 @@ export function entryCost(entry, ctx) {
   }
   res.total += res.accessories;
   return res;
+}
+
+/**
+ * Facteur prix réel / prix annoncé des puffs terminées :
+ * bouffées annoncées / bouffées réellement enregistrées.
+ */
+export function puffActualFactors(products, purchases, entries) {
+  const out = new Map();
+  for (const p of products.filter((x) => x.kind === 'puff' && x.finishedAt)) {
+    const announced = purchases.filter((x) => x.productId === p.id && isNum(x.packSize)).map((x) => x.packSize).pop() ?? p.refPackSize;
+    const recorded = entries.filter((e) => e.kind === 'consumption' && e.puffs?.productId === p.id && e.at <= p.finishedAt && (!p.openedAt || e.at >= p.openedAt))
+      .reduce((t, e) => t + (e.puffs.count || 0), 0);
+    if (isNum(announced) && recorded > 0) out.set(p.id, announced / recorded);
+  }
+  return out;
 }
 
 /** Mémoïsation simple des coûts (invalidée quand l'index change). */

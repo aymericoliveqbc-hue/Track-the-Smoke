@@ -4,6 +4,7 @@ import { h, fill } from '../ui/dom.js';
 import { icon, logo } from '../ui/icons.js';
 import { toast } from '../ui/components.js';
 import { beforeFields, applyBeforePrices } from './before.js';
+import { renderSetup } from './setup.js';
 import { emptyBefore, beforeMonthly } from '../domain/before.js';
 import { saveSettings, switchMode } from '../core/store.js';
 import { dayKey } from '../core/dates.js';
@@ -34,13 +35,15 @@ export function renderOnboarding(onDone) {
     () => h('div', { class: 'ob-step' },
       h('div', { class: 'ob-logo' }, logo(72)),
       h('h1', null, 'TRACK THE SMOKE'),
-      h('p', { class: 'ob-tag' }, 'Know your habits. Take back control.'),
+      h('p', { class: 'ob-tag' }, 'Understand your habits. Track your consumption. Take control.'),
       h('ul', { class: 'checklist' },
-        h('li', null, icon('check', 16), 'Comprendre ta consommation réelle de tabac et de CBD.'),
-        h('li', null, icon('check', 16), 'Réduire à ton rythme, sans jugement : une rechute n’efface jamais tes progrès.'),
+        h('li', null, icon('check', 16), 'Cigarettes, roulées, joints, vape, puff, chicha… : suis toutes tes habitudes.'),
+        h('li', null, icon('check', 16), 'Comprendre, réduire ou arrêter : à ton rythme, sans jugement. Une rechute n’efface jamais tes progrès.'),
         h('li', null, icon('check', 16), 'Tes données restent sur ton appareil. Aucune publicité, aucun traceur.')),
       h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => next() }, 'Commencer'),
       h('button', { class: 'btn btn-ghost btn-block', onclick: async () => { await switchMode('demo'); toast('Mode démo : données fictives séparées'); } }, icon('demo', 16), 'Explorer la démo d’abord')),
+    // Configuration guidée des habitudes (méthodes, produits, principale, mode).
+    () => h('div', { class: 'ob-step' }, renderSetup({ onDone: () => next() })),
     () => {
       const totalEl = h('p', { class: 'before-total' });
       const refresh = () => {
@@ -68,7 +71,7 @@ export function renderOnboarding(onDone) {
 
   const render = () => {
     fill(root, 
-      h('div', { class: 'ob-dots' }, steps.map((_, i) => h('i', { class: i === step ? 'on' : '' }))),
+      step === 1 ? null : h('div', { class: 'ob-dots' }, steps.map((_, i) => h('i', { class: i === step ? 'on' : '' }))),
       steps[step]());
     root.scrollTop = 0;
   };

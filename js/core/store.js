@@ -5,12 +5,13 @@ import { DB, DB_MAIN, DB_DEMO } from './db.js';
 import { dayKey, nowLocal } from './dates.js';
 import { setCurrency } from './format.js';
 import { defaultSettings, defaultProducts, SYSTEM_CATEGORIES, SCHEMA_VERSION } from '../domain/models.js';
-import { buildPriceIndex, makeCostFn } from '../domain/costs.js';
+import { buildPriceIndex, makeCostFn, puffActualFactors } from '../domain/costs.js';
 import { trackingStartOf } from '../domain/stats.js';
 import { computeBaseline, observationStatus } from '../domain/goals.js';
 import { buildDemoData } from '../domain/demo.js';
 import { STORES } from '../domain/backup.js';
 import { calibrate, autoUpdates } from '../domain/autoqty.js';
+import { migrateState } from '../domain/migrations.js';
 
 export const state = {
   mode: 'main',
@@ -35,6 +36,7 @@ export async function init(mode = localStorage.getItem(MODE_KEY) || 'main') {
   db = await new DB(state.mode === 'demo' ? DB_DEMO : DB_MAIN).open();
   await load();
   if (state.mode === 'demo' && !state.entries.length) await seedDemo();
+  await runMigrations();
   ensureDefaults();
   setCurrency(state.settings.currency);
   await maybeComputeBaseline();
@@ -53,6 +55,28 @@ async function load() {
     await db.put('meta', state.settings);
   }
 }
+
+/**
+ * Applique les migrations versionnées (domain/migrations.js) à la base
+ * active, après un instantané local restaurable.
+ */
+async function runMigrations() {
+  const from = state.settings.schema || 1;
+  if (from >= SCHEMA_VERSION) return;
+  const snapshot = {};
+  for (const s of STORES) snapshot[s] = state[s];
+  const { buildExport } = await import('../domain/backup.js');
+  await db.put('backups', { id: `backup_premigration_v${SCHEMA_VERSION}`, at: new Date().toISOString(), payload: buildExport({ ...snapshot, settings: state.settings }, { demo: isDemo() }) });
+  const { state: next, log } = migrateState({ ...snapshot, settings: state.settings });
+  const changed = {};
+  for (const s of STORES) { state[s] = next[s] || []; changed[s] = state[s]; }
+  state.settings = next.settings;
+  await db.replaceAll(changed);
+  await db.put('meta', state.settings);
+  migrationLog = { from, to: SCHEMA_VERSION, log, at: new Date().toISOString() };
+  try { localStorage.setItem('tts-last-migration', JSON.stringify(migrationLog)); } catch { /* facultatif */ }
+}
+export let migrationLog = null;
 
 function ensureDefaults() {
   for (const c of SYSTEM_CATEGORIES) {
@@ -94,7 +118,7 @@ export async function save(store, obj) {
   const i = list.findIndex((x) => x.id === obj.id);
   if (i >= 0) list[i] = obj; else list.push(obj);
   await db.put(store, obj);
-  if (store === 'entries' || store === 'packs') await recalibrate();
+  if (['entries', 'packs', 'purchases', 'inventories', 'products'].includes(store)) await recalibrate();
   emit(store);
   return obj;
 }
@@ -104,7 +128,7 @@ export async function save(store, obj) {
  * paquets déclarés. Écrit directement les entrées modifiées.
  */
 export async function recalibrate() {
-  const cal = calibrate(state.entries, state.packs, state.settings);
+  const cal = calibrate(state.entries, state.packs, state.settings, calData());
   calibration = cal;
   const changed = autoUpdates(state.entries, cal);
   if (!changed.length) return 0;
@@ -114,12 +138,13 @@ export async function recalibrate() {
   return changed.length;
 }
 let calibration = null;
-export const currentCalibration = () => calibration || (calibration = calibrate(state.entries, state.packs, state.settings));
+const calData = () => ({ products: state.products, purchases: state.purchases, inventories: state.inventories });
+export const currentCalibration = () => calibration || (calibration = calibrate(state.entries, state.packs, state.settings, calData()));
 
 export async function remove(store, id) {
   state[store] = state[store].filter((x) => x.id !== id);
   await db.delete(store, id);
-  if (store === 'entries' || store === 'packs') await recalibrate();
+  if (['entries', 'packs', 'purchases', 'inventories', 'products'].includes(store)) await recalibrate();
   emit(store);
 }
 
@@ -127,7 +152,7 @@ export async function saveSettings(patch) {
   state.settings = deepMerge(state.settings, patch);
   setCurrency(state.settings.currency);
   await db.put('meta', state.settings);
-  if (patch.autoPriors || patch.defaultProducts) await recalibrate();
+  if (patch.autoPriors || patch.autoPriorsV2 || patch.defaultProducts) await recalibrate();
   emit('settings');
 }
 
@@ -148,9 +173,11 @@ export async function replaceAllData(data, settings) {
   Object.assign(state, map);
   if (settings) {
     const keepPrivacy = state.settings.privacy;
-    state.settings = { ...defaultSettings(), ...settings, privacy: { ...keepPrivacy, autoBackup: settings.privacy?.autoBackup ?? true } };
+    state.settings = { ...defaultSettings(), schema: settings.schema || 1, habits: undefined, ...settings, privacy: { ...keepPrivacy, autoBackup: settings.privacy?.autoBackup ?? true } };
     await db.put('meta', state.settings);
   }
+  // Une sauvegarde d'une version antérieure est migrée à l'import.
+  if ((state.settings.schema || 1) < SCHEMA_VERSION) await runMigrations();
   ensureDefaults();
   if (!state.products.length) { state.products = defaultProducts(); await db.replaceAll({ products: state.products }); }
   setCurrency(state.settings.currency);
@@ -190,7 +217,8 @@ export function derived() {
   const today = dayKey();
   if (cache && cache.today === today && cache.version === version) return cache;
   const index = buildPriceIndex(state.products, state.purchases);
-  const cost = makeCostFn({ index, settings: state.settings });
+  const puffActual = puffActualFactors(state.products, state.purchases, state.entries);
+  const cost = makeCostFn({ index, settings: state.settings, puffActual });
   const trackingStart = trackingStartOf(state);
   cache = { version, today, index, cost, trackingStart, ctx: { cost, trackingStart, today } };
   return cache;

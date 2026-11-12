@@ -37,6 +37,8 @@ function render() {
   const main = $('#main');
   if (locked) return;
   if (!state.settings.onboarded && !isDemo()) {
+    // Ne jamais redessiner un accueil en cours : il garde son étape et ses saisies.
+    if (main.querySelector(':scope > .onboarding')) return;
     document.body.classList.add('onboarding-mode');
     clear(main).append(renderOnboarding(() => { document.body.classList.remove('onboarding-mode'); location.hash = '#/home'; render(); }));
     return;

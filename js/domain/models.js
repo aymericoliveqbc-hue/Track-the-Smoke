@@ -1,9 +1,11 @@
+import { METHOD_CATALOG } from './methods.js';
+
 // Modèle de données, référentiels et valeurs par défaut.
 //
 // Aucune valeur par défaut ne contient de prix ou de quantité : ces données
 // doivent toujours provenir de l'utilisateur (règle métier n° 1 et 2).
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2; // v2 : méthodes universelles, sessions, habitudes
 
 export const uid = (prefix = 'id') =>
   `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -18,23 +20,16 @@ export const CAT = {
   CBD: 'cbd',
 };
 
-export const SYSTEM_CATEGORIES = [
-  {
-    id: CAT.JOINT, system: true, name: 'Joint tabac + CBD', short: 'Joint',
-    icon: 'joint', color: 'violet', tobacco: true, cbd: true, cbdUnit: 'g',
-    accessories: [{ type: 'slim', count: 1 }, { type: 'filter', count: 1 }],
-  },
-  {
-    id: CAT.ROLLED, system: true, name: 'Cigarette roulée', short: 'Roulée',
-    icon: 'rolled', color: 'blue', tobacco: true, cbd: false,
-    accessories: [{ type: 'classic', count: 1 }],
-  },
-  {
-    id: CAT.CBD, system: true, name: 'CBD seul', short: 'CBD seul',
-    icon: 'leafless', color: 'green', tobacco: false, cbd: true, cbdUnit: 'g',
-    accessories: [],
-  },
-];
+/**
+ * Catégories système = méthodes du catalogue (domain/methods.js).
+ * tobacco / cbd : mécanique par défaut (pour le joint, la composition choisie
+ * prime : un joint n'est jamais supposé contenir du tabac ou du CBD).
+ */
+export const SYSTEM_CATEGORIES = METHOD_CATALOG.map((m) => ({
+  id: m.id, system: true, name: m.name, short: m.short, icon: m.icon, color: m.color,
+  tobacco: !!m.mechanics.tobacco || m.id === 'joint', cbd: !!m.mechanics.cannabis || m.id === 'joint', cbdUnit: 'g',
+  accessories: m.accessories,
+}));
 
 /** Catégorie personnalisée : modèle vierge. */
 export function newCustomCategory() {
@@ -59,6 +54,7 @@ export const CBD_FORMS = [
  */
 export const MOLECULES = [
   { id: 'cbd', label: 'CBD', short: 'CBD', synthetic: false },
+  { id: 'thc', label: 'THC', short: 'THC', synthetic: false, thc: true },
   { id: '10oh', label: '10-OH-HHC', short: '10-OH', synthetic: true },
   { id: 'hhc', label: 'HHC', short: 'HHC', synthetic: true },
   { id: 'hhcp', label: 'HHC-P', short: 'HHC-P', synthetic: true },
@@ -69,6 +65,7 @@ export const MOLECULES = [
   { id: 'cbn', label: 'CBN', short: 'CBN', synthetic: false },
   { id: 'cbg', label: 'CBG', short: 'CBG', synthetic: false },
   { id: 'other', label: 'Autre', short: 'Autre', synthetic: true },
+  { id: 'unknown', label: 'Non précisée', short: 'Résine ?', synthetic: false },
 ];
 export const moleculeOf = (id) => MOLECULES.find((m) => m.id === id) || MOLECULES[0];
 /** Libellé court d'une entrée : molécule précise (ou texte libre « Autre »). */
@@ -131,7 +128,11 @@ export const TRIGGERS = [
 export const CRAVING_PRODUCTS = [
   { id: 'tobacco', label: 'Tabac' },
   { id: 'cbd', label: 'CBD' },
-  { id: 'both', label: 'Les deux' },
+  { id: 'thc', label: 'THC' },
+  { id: 'vape', label: 'Vape' },
+  { id: 'puff', label: 'Puff' },
+  { id: 'both', label: 'Tabac + CBD' },
+  { id: 'other', label: 'Autre' },
 ];
 
 export const WAKE_FEELINGS = [
@@ -153,13 +154,45 @@ export const labelOf = (list, id) => list.find((x) => x.id === id)?.label ?? '';
  * refPackPrice / refPackSize : tarif de référence facultatif, utilisé si aucun
  * achat n'est enregistré à la date de la consommation.
  */
+/**
+ * Types de produits (même système d'achats datés, de prix et de stock) :
+ *  tobacco    tabac à rouler / pipe / chicha        unité : g
+ *  cbd        fleurs, résine… (molécule : CBD, THC…) unité : g (ou ml, gouttes)
+ *  cigarettes paquet de N cigarettes (+ nicotine/cig) unité : cigarette
+ *  cigars     boîte de cigares / cigarillos          unité : pièce
+ *  liquid     flacon d'e-liquide (+ nicotine mg/ml)  unité : ml
+ *  puff       puff / pod (+ bouffées annoncées)      unité : bouffée
+ *  device     appareil de vape (réservoir)           pas de consommation
+ *  accessory  feuilles, filtres…                     unité : pièce
+ */
+export const PRODUCT_KINDS = [
+  { id: 'tobacco', label: 'Tabac', unit: 'g', sizeLabel: 'Poids (g)' },
+  { id: 'cbd', label: 'CBD / cannabinoïde', unit: 'g', sizeLabel: 'Quantité (g)' },
+  { id: 'cigarettes', label: 'Cigarettes', unit: 'unit', sizeLabel: 'Cigarettes par paquet' },
+  { id: 'cigars', label: 'Cigares / cigarillos', unit: 'unit', sizeLabel: 'Pièces par boîte' },
+  { id: 'liquid', label: 'E-liquide', unit: 'ml', sizeLabel: 'Contenance (ml)' },
+  { id: 'puff', label: 'Puff / pod', unit: 'puff', sizeLabel: 'Bouffées annoncées' },
+  { id: 'device', label: 'Appareil de vape', unit: 'unit', sizeLabel: 'Quantité' },
+  { id: 'accessory', label: 'Accessoire', unit: 'unit', sizeLabel: 'Unités par paquet' },
+];
+export const productKindOf = (id) => PRODUCT_KINDS.find((k) => k.id === id) || PRODUCT_KINDS[0];
+
 export function newProduct(kind, extra = {}) {
   return {
     id: uid('prd'), kind, name: '', brand: '', supplier: '',
     cbdForm: kind === 'cbd' ? 'flower' : null,
+    molecule: kind === 'cbd' ? 'cbd' : null,
     accessoryType: kind === 'accessory' ? 'slim' : null,
-    unit: kind === 'accessory' ? 'unit' : 'g',
+    unit: productKindOf(kind).unit,
     refPackPrice: null, refPackSize: null,
+    // cigarettes / cigares
+    nicotinePerUnit: null, cigarType: kind === 'cigars' ? 'cigar' : null,
+    // e-liquide
+    nicotineMgPerMl: null, liquidType: null,
+    // puff
+    puffType: kind === 'puff' ? 'disposable' : null, puffMl: null, nicotineTotalMg: null, openedAt: null, finishedAt: null,
+    // appareil
+    model: '', tankMl: null, deviceType: null,
     archived: false, createdAt: new Date().toISOString(),
     ...extra,
   };
@@ -185,13 +218,18 @@ export function defaultSettings() {
     schema: SCHEMA_VERSION,
     onboarded: false,
     currency: 'EUR',
-    theme: 'light', // 'light' (Sable) | 'dark' (Forêt) | 'auto'
+    theme: 'light', // 'light' | 'dark' | 'auto'
     themeV2: true,
     trackingStart: null,
     defaultProducts: {
       tobacco: 'prd_tobacco', cbd: 'prd_cbd_flower',
       slim: 'prd_slim', classic: 'prd_classic', filter: 'prd_filter', other: null,
+      cigarettes: null, cigars: null, liquid: null, puff: null, device: null,
     },
+    // V2 — habitudes : méthodes activées, méthode principale déclarée, mode par méthode.
+    habits: { configured: false, enabled: [], primary: null, modes: {} },
+    sessions: { reminderMin: 30 },
+    ai: { dataConsent: false, consentAt: null },
     quickDefaults: {}, // dernières valeurs par catégorie
     defaultMethod: 'auto', // pas de balance : estimation automatique
     autoV1: true,

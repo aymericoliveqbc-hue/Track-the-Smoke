@@ -200,6 +200,12 @@ export function minutesSince(at, now = nowLocal()) {
   return days * 1440 + minutesOfDay(now) - minutesOfDay(at);
 }
 
+/** Minutes entre deux horodatages locaux (b − a), y compris à travers minuit. */
+export function minutesBetween(a, b) {
+  if (!isLocalDateTime(a) || !isLocalDateTime(b)) return null;
+  return diffDays(a.slice(0, 10), b.slice(0, 10)) * 1440 + minutesOfDay(b) - minutesOfDay(a);
+}
+
 export function formatElapsed(min) {
   if (min == null) return '—';
   if (min < 1) return "moins d'1 min";

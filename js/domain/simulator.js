@@ -19,23 +19,27 @@ export function dailyCostProfile(entries, range, ctx) {
   const list = entriesIn(entries, cov).filter(isConsumption);
   const p = {
     days: cov.days, coverage: cov, entries: list.length, incomplete: 0,
-    tobacco: 0, cbd: 0,
+    tobacco: 0, cbd: 0, other: 0,
     accJoint: 0, accRolled: 0, accCbd: 0, accCustom: 0,
-    customTobaccoOnly: 0,
+    customTobaccoOnly: 0, byCategory: {},
   };
   for (const e of list) {
     const c = ctx.cost(e);
     if (!c.complete) p.incomplete += 1;
     p.tobacco += c.tobacco || 0;
     p.cbd += c.cbd || 0;
+    // THC, liquides, cigarettes, cigares, puffs… : comptés dans le total.
+    p.other += (c.thc || 0) + (c.unknown || 0) + (c.liquid || 0) + (c.cigarettes || 0) + (c.cigars || 0) + (c.puffs || 0);
+    p.byCategory[e.categoryId] = (p.byCategory[e.categoryId] || 0) + c.total;
     const acc = c.accessories || 0;
     if (e.categoryId === CAT.JOINT) p.accJoint += acc;
     else if (e.categoryId === CAT.ROLLED) p.accRolled += acc;
     else if (e.categoryId === CAT.CBD) p.accCbd += acc;
     else p.accCustom += acc;
   }
-  for (const k of ['tobacco', 'cbd', 'accJoint', 'accRolled', 'accCbd', 'accCustom']) p[k] /= cov.days;
-  p.total = p.tobacco + p.cbd + p.accJoint + p.accRolled + p.accCbd + p.accCustom;
+  for (const k of ['tobacco', 'cbd', 'other', 'accJoint', 'accRolled', 'accCbd', 'accCustom']) p[k] /= cov.days;
+  for (const k of Object.keys(p.byCategory)) p.byCategory[k] /= cov.days;
+  p.total = p.tobacco + p.cbd + p.other + p.accJoint + p.accRolled + p.accCbd + p.accCustom;
   return p;
 }
 
@@ -59,4 +63,21 @@ export function scenarios(profile) {
 
 export function projectSavings(scenario, horizons = HORIZONS) {
   return horizons.map((h) => ({ ...h, amount: scenario.saving * h.days, spend: scenario.remaining * h.days }));
+}
+
+/**
+ * Arrêt d'une ou plusieurs méthodes : leur coût quotidien observé disparaît
+ * (ingrédients et accessoires compris), les autres restent identiques.
+ */
+export function stopMethodsScenario(profile, categoryIds, labelOf = (id) => id) {
+  if (!profile) return null;
+  const avoided = categoryIds.reduce((t, id) => t + (profile.byCategory[id] || 0), 0);
+  const label = categoryIds.length ? `Arrêt : ${categoryIds.map(labelOf).join(', ')}` : 'Aucune méthode choisie';
+  return { id: `stop:${categoryIds.join('+')}`, label, remaining: Math.max(0, profile.total - avoided), saving: avoided };
+}
+
+/** Réduction en pourcentage sur l'ensemble. */
+export function reductionScenario(profile, share) {
+  if (!profile) return null;
+  return { id: `r${Math.round(share * 100)}`, label: `Réduction de ${Math.round(share * 100)} %`, remaining: profile.total * (1 - share), saving: profile.total * share };
 }

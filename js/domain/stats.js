@@ -7,9 +7,10 @@
 //    renvoient le nombre d'observations (n) utilisé ;
 //  - aucune journée antérieure au début du suivi n'est comptée comme « 0 ».
 
-import { addDays, daysBetween, diffDays, hourOf, weekday, dayPart, startOfWeek, startOfMonth } from '../core/dates.js';
+import { addDays, daysBetween, diffDays, hourOf, weekday, dayPart, startOfWeek, startOfMonth, minutesBetween } from '../core/dates.js';
 import { isNum } from '../core/format.js';
 import { CAT } from './models.js';
+import { components, moleculeClass } from './methods.js';
 
 export const isConsumption = (e) => e.kind === 'consumption';
 export const isCraving = (e) => e.kind === 'craving';
@@ -52,6 +53,7 @@ function addQty(agg, value, method, filter) {
   if (method === 'weighed') agg.weighed += value;
   else if (method === 'estimated') agg.estimated += value;
   else if (method === 'auto') agg.auto += value;
+  else if (method === 'counted') agg.counted = (agg.counted || 0) + value;
   else agg.unknownMethod += value;
 }
 
@@ -66,12 +68,16 @@ export function summarize(entries, range, ctx, opts = {}) {
   const method = opts.method || 'all';
   const cov = coverage(range, ctx.trackingStart, ctx.today);
   const list = entriesIn(entries, cov);
+  const COST_KEYS = ['tobacco', 'cbd', 'thc', 'unknown', 'liquid', 'cigarettes', 'cigars', 'puffs', 'accessories'];
   const s = {
     range, coverage: cov,
-    counts: { total: 0, joint: 0, rolled: 0, cbd: 0, custom: 0, byCategory: {} },
+    counts: { total: 0, joint: 0, rolled: 0, cbd: 0, custom: 0, byCategory: {}, exceptional: 0, running: 0 },
     tobacco: qtyAgg(), tobaccoJoint: qtyAgg(), tobaccoRolled: qtyAgg(),
     cbd: qtyAgg(), cbdJoint: qtyAgg(), cbdOther: {},
-    cost: { total: 0, tobacco: 0, cbd: 0, accessories: 0, incomplete: 0, entries: 0 },
+    thc: qtyAgg(), unknownCannabis: qtyAgg(), liquid: qtyAgg(),
+    units: { cigarettes: 0, cigars: 0 }, puffs: 0, nicotineMg: 0, nicotineN: 0,
+    sessions: { timed: 0, totalMin: 0 },
+    cost: { total: 0, incomplete: 0, entries: 0, byCategory: {}, ...Object.fromEntries(COST_KEYS.map((k) => [k, 0])) },
     cravings: { total: 0, resisted: 0, consumed: 0, intensitySum: 0, intensityN: 0, durationSum: 0, durationN: 0, avgIntensity: null, avgDuration: null },
   };
   for (const e of list) {
@@ -84,35 +90,44 @@ export function summarize(entries, range, ctx, opts = {}) {
       continue;
     }
     if (!isConsumption(e)) continue;
+    if (e.status === 'running') s.counts.running += 1;
     s.counts.total += 1;
     s.counts.byCategory[e.categoryId] = (s.counts.byCategory[e.categoryId] || 0) + 1;
+    if (e.exceptional) s.counts.exceptional += 1;
     if (e.categoryId === CAT.JOINT) s.counts.joint += 1;
     else if (e.categoryId === CAT.ROLLED) s.counts.rolled += 1;
     else if (e.categoryId === CAT.CBD) s.counts.cbd += 1;
     else s.counts.custom += 1;
 
-    if (e.tobacco) {
-      addQty(s.tobacco, e.tobacco.grams, e.tobacco.method, method);
-      if (e.categoryId === CAT.JOINT) addQty(s.tobaccoJoint, e.tobacco.grams, e.tobacco.method, method);
-      if (e.categoryId === CAT.ROLLED) addQty(s.tobaccoRolled, e.tobacco.grams, e.tobacco.method, method);
+    for (const c of components(e)) {
+      if (c.substance === 'tobacco') {
+        addQty(s.tobacco, c.amount, c.method, method);
+        if (e.categoryId === CAT.JOINT) addQty(s.tobaccoJoint, c.amount, c.method, method);
+        if (e.categoryId === CAT.ROLLED) addQty(s.tobaccoRolled, c.amount, c.method, method);
+      } else if (c.substance === 'cannabis') {
+        if ((c.unit || 'g') !== 'g') {
+          s.cbdOther[c.unit] = s.cbdOther[c.unit] || qtyAgg();
+          addQty(s.cbdOther[c.unit], c.amount, c.method, method);
+          continue;
+        }
+        // Familles jamais mélangées : CBD (et dérivés suivis par molécule), THC, non précisé.
+        const cls = moleculeClass(c.molecule);
+        const agg = cls === 'thc' ? s.thc : cls === 'unknown' ? s.unknownCannabis : s.cbd;
+        addQty(agg, c.amount, c.method, method);
+        if (cls === 'cbd' && e.categoryId === CAT.JOINT) addQty(s.cbdJoint, c.amount, c.method, method);
+      } else if (c.substance === 'liquid') addQty(s.liquid, c.amount, c.method, method);
+      else if (c.substance === 'units' && isNum(c.amount)) s.units[c.productKind === 'cigars' ? 'cigars' : 'cigarettes'] += c.amount;
+      else if (c.substance === 'puffs' && isNum(c.amount)) s.puffs += c.amount;
     }
-    if (e.cbd) {
-      const unit = e.cbd.unit || 'g';
-      if (unit === 'g') {
-        addQty(s.cbd, e.cbd.amount, e.cbd.method, method);
-        if (e.categoryId === CAT.JOINT) addQty(s.cbdJoint, e.cbd.amount, e.cbd.method, method);
-      } else {
-        s.cbdOther[unit] = s.cbdOther[unit] || qtyAgg();
-        addQty(s.cbdOther[unit], e.cbd.amount, e.cbd.method, method);
-      }
-    }
+    const dur = sessionMinutes(e);
+    if (dur != null) { s.sessions.timed += 1; s.sessions.totalMin += dur; }
     if (ctx.cost) {
       const c = ctx.cost(e);
       s.cost.entries += 1;
       s.cost.total += c.total;
-      s.cost.tobacco += c.tobacco || 0;
-      s.cost.cbd += c.cbd || 0;
-      s.cost.accessories += c.accessories || 0;
+      for (const k of COST_KEYS) s.cost[k] += c[k] || 0;
+      s.cost.byCategory[e.categoryId] = (s.cost.byCategory[e.categoryId] || 0) + c.total;
+      if (isNum(c.nicotineMg)) { s.nicotineMg += c.nicotineMg; s.nicotineN += 1; }
       if (!c.complete) s.cost.incomplete += 1;
     }
   }
@@ -120,6 +135,13 @@ export function summarize(entries, range, ctx, opts = {}) {
   c.avgIntensity = c.intensityN ? c.intensitySum / c.intensityN : null;
   c.avgDuration = c.durationN ? c.durationSum / c.durationN : null;
   return s;
+}
+
+/** Durée d'une session terminée, en minutes (traverse minuit), sinon null. */
+export function sessionMinutes(e) {
+  if (!e?.endAt || e.status === 'running') return null;
+  const d = minutesBetween(e.at, e.endAt);
+  return d != null && d >= 0 ? d : null;
 }
 
 /** Variation relative entre deux valeurs (null si non calculable). */
@@ -153,14 +175,24 @@ export function dailySeries(entries, range, ctx, fn) {
 }
 
 /** Fonctions de mesure réutilisables pour les séries. */
+const sumComp = (list, pred) => {
+  let t = 0;
+  for (const e of list) if (isConsumption(e)) for (const c of components(e)) if (pred(c) && isNum(c.amount)) t += c.amount;
+  return t;
+};
 export const measures = {
-  tobaccoGrams: (list) => sum(list.filter(isConsumption).map((e) => e.tobacco?.grams)),
-  cbdGrams: (list) => sum(list.filter((e) => isConsumption(e) && (e.cbd?.unit || 'g') === 'g').map((e) => e.cbd?.amount)),
+  tobaccoGrams: (list) => sumComp(list, (c) => c.substance === 'tobacco'),
+  cbdGrams: (list) => sumComp(list, (c) => c.substance === 'cannabis' && (c.unit || 'g') === 'g' && moleculeClass(c.molecule) === 'cbd'),
+  thcGrams: (list) => sumComp(list, (c) => c.substance === 'cannabis' && (c.unit || 'g') === 'g' && moleculeClass(c.molecule) === 'thc'),
+  liquidMl: (list) => sumComp(list, (c) => c.substance === 'liquid'),
+  cigarettes: (list) => sumComp(list, (c) => c.substance === 'units' && c.productKind !== 'cigars'),
+  puffs: (list) => sumComp(list, (c) => c.substance === 'puffs'),
   count: (list) => list.filter(isConsumption).length,
   joints: (list) => list.filter((e) => e.categoryId === CAT.JOINT).length,
   rolled: (list) => list.filter((e) => e.categoryId === CAT.ROLLED).length,
   resisted: (list) => list.filter((e) => isCraving(e) && e.outcome !== 'consumed').length,
   cravings: (list) => list.filter(isCraving).length,
+  ofCategory: (id) => (list) => list.filter((e) => isConsumption(e) && e.categoryId === id).length,
 };
 export const costMeasure = (costFn) => (list) => sum(list.filter(isConsumption).map((e) => costFn(e).total));
 

@@ -6,7 +6,9 @@ import { card, badge } from '../ui/components.js';
 import { barChart, COLORS } from '../ui/charts.js';
 import { entryRow, nightRow, entriesOfDay } from '../ui/entries.js';
 import { openCravingForm, quickLog, openQuickAdd } from '../ui/forms.js';
-import { state, derived, isDemo } from '../core/store.js';
+import { orderedCategories, runningCard } from '../ui/record.js';
+import { openHabits } from './profile.js';
+import { state, derived, isDemo, catById, saveSettings } from '../core/store.js';
 import { addDays, formatDayLong, WEEKDAYS_LETTER, weekday } from '../core/dates.js';
 import { fmtGrams, fmtMoney, fmtNum } from '../core/format.js';
 import { summarize, dailySeries, measures } from '../domain/stats.js';
@@ -38,6 +40,9 @@ export function renderHome() {
       h('button', { class: 'icon-btn', 'aria-label': 'Masquer', onclick: () => { dismissReminder(r.id); window.dispatchEvent(new Event('tts:render')); } }, icon('close', 16))));
   }
 
+  const run = runningCard();
+  if (run) root.append(run);
+  if (!state.settings.v2IntroSeen && state.entries.length && state.settings.onboarded) root.append(v2Intro());
   root.append(todayCard(ctx, today));
   const sav = beforeHomeCard();
   if (sav) root.append(sav);
@@ -79,23 +84,58 @@ function todayCard(ctx, today) {
       h('span', { class: 'hero-num' }, String(total)),
       h('span', { class: 'hero-unit' }, total > 1 ? 'consommations' : 'consommation')),
     h('div', { class: 'hero-split' },
-      stat(s.counts.joint, s.counts.joint > 1 ? 'joints' : 'joint'),
-      stat(s.counts.rolled, s.counts.rolled > 1 ? 'roulées' : 'roulée'),
+      ...heroMethods(s).slice(0, 2).map(([id, n]) => stat(fmtNum(n, 0), shortName(id, n))),
       stat(s.cravings.resisted, s.cravings.resisted > 1 ? 'envies résistées' : 'envie résistée')),
     h('div', { class: 'hero-foot' },
-      h('span', null, [`${fmtGrams(s.tobacco.total)} tabac`, `${fmtGrams(s.cbd.total)} CBD`, s.cost.total > 0 ? fmtMoney(s.cost.total) : null].filter(Boolean).join(' · ')),
+      h('span', null, heroQuantities(s).join(' · ')),
       compare ? h('span', { class: `hero-cmp ${compare.tone}` }, compare.text) : null));
 }
 
 const stat = (n, label) => h('div', { class: 'hero-stat' }, h('b', null, String(n)), h('span', null, label));
 
+/** Gestes de l'accueil : méthode principale + habitudes, envie, autre. */
 function actions() {
-  const btn = (label, ic, fn) => h('button', { class: 'action', onclick: fn }, h('span', { class: 'action-icon' }, icon(ic, 24)), h('span', null, label));
+  const btn = (label, ic, fn, cls = '') => h('button', { class: `action ${cls}`, onclick: fn }, h('span', { class: 'action-icon' }, icon(ic, 24)), h('span', null, label));
+  const cats = orderedCategories().slice(0, 2);
+  if (!cats.length) cats.push(...[catById(CAT.JOINT), catById(CAT.ROLLED)].filter(Boolean));
   return h('div', { class: 'actions' },
-    btn('Joint', 'joint', () => quickLog(CAT.JOINT)),
-    btn('Roulée', 'rolled', () => quickLog(CAT.ROLLED)),
+    ...cats.map((c, i) => btn(c.short || c.name, c.icon, () => quickLog(c.id), i === 0 && c.id === state.settings.habits?.primary ? 'action-primary' : '')),
     btn('Envie', 'wave', () => openCravingForm()),
     btn('Autre', 'plus', () => openQuickAdd()));
+}
+
+/** Méthodes du jour à afficher : habitudes activées, puis celles réellement utilisées. */
+function heroMethods(s) {
+  const enabled = orderedCategories().map((c) => c.id);
+  const used = Object.entries(s.counts.byCategory).sort((a, b) => b[1] - a[1]).map(([id]) => id);
+  const ids = [...new Set([...enabled.slice(0, 2), ...used])];
+  return ids.map((id) => [id, s.counts.byCategory[id] || 0]).sort((a, b) => b[1] - a[1] || enabled.indexOf(a[0]) - enabled.indexOf(b[0]));
+}
+function shortName(id, n) {
+  const c = catById(id);
+  const base = (c?.short || c?.name || id).toLowerCase();
+  return n > 1 && !base.endsWith('s') && !base.includes(' ') ? `${base}s` : base;
+}
+/** Quantités du jour, seulement pour ce qui est réellement concerné. */
+function heroQuantities(s) {
+  const out = [];
+  if (s.tobacco.total) out.push(`${fmtGrams(s.tobacco.total)} tabac`);
+  if (s.cbd.total) out.push(`${fmtGrams(s.cbd.total)} CBD`);
+  if (s.thc.total) out.push(`${fmtGrams(s.thc.total)} THC`);
+  if (s.units.cigarettes) out.push(`${fmtNum(s.units.cigarettes, 1)} cig.`);
+  if (s.liquid.total) out.push(`${fmtNum(s.liquid.total, 1)} ml`);
+  if (s.puffs) out.push(`${fmtNum(s.puffs, 0)} bouffées`);
+  if (s.cost.total > 0) out.push(fmtMoney(s.cost.total));
+  return out.length ? out : ['Rien d\u2019enregistré pour l\u2019instant'];
+}
+
+function v2Intro() {
+  return h('section', { class: 'v2-intro' }, h('span', { class: 'setup-ic' }, icon('sparkle', 18)),
+    h('div', { class: 'grow' }, h('b', null, 'Nouveau : toutes tes habitudes'),
+      h('span', { class: 'muted small' }, 'Cigarettes, vape, puff, chicha, sessions chronométrées… Tes données sont conservées. Vérifie tes méthodes en un instant.'),
+      h('div', { class: 'row-actions' },
+        h('button', { class: 'btn btn-primary btn-sm', onclick: async () => { await saveSettings({ v2IntroSeen: true }); openHabits(); } }, 'Mes habitudes'),
+        h('button', { class: 'btn btn-ghost btn-sm', onclick: () => saveSettings({ v2IntroSeen: true }) }, 'Plus tard'))));
 }
 
 function weekCard(ctx, today) {

@@ -6,27 +6,32 @@ import { card, cardHead, field, segmented, select, decimalInput, toast, openShee
 import { state, save, remove, saveSettings, currentCalibration, productById } from '../core/store.js';
 import { nowLocal, dayKey, formatDayShort, diffDays } from '../core/dates.js';
 import { fmtGrams, fmtNum, fmtMoney, isNum } from '../core/format.js';
-import { newPack, packRemaining, REMAINING_CHOICES, priorsOf, precisionLabel, DEFAULT_PRIORS } from '../domain/autoqty.js';
+import { newPack, packRemaining, REMAINING_CHOICES, priorsOf, precisionLabel } from '../domain/autoqty.js';
 import { uid } from '../domain/models.js';
 
-const KIND_LABEL = { tobacco: 'Tabac', cbd: 'CBD' };
+const KIND_LABEL = { tobacco: 'Tabac', cbd: 'CBD', liquid: 'E-liquide' };
+const UNIT = (kind) => (kind === 'liquid' ? 'ml' : 'g');
+const SUB = { tobacco: 'tobacco', cbd: 'cannabis', liquid: 'liquid' };
+const fmtU = (v, kind, d = 2) => (isNum(v) ? `${fmtNum(v, d)} ${UNIT(kind)}` : '—');
 const openPacks = () => state.packs.filter((p) => !p.finishedAt).sort((a, b) => (a.openedAt < b.openedAt ? 1 : -1));
 
 function perUnitText(kind) {
   const cal = currentCalibration();
   const pr = priorsOf(state.settings);
-  const k = cal.factors[kind] ?? 1;
+  if (kind === 'liquid') return cal.factors.liquid ? `≈ ${fmtNum(cal.factors.liquid, 2)} ml par session` : 'Données insuffisantes';
+  const k = cal.factors[SUB[kind]] ?? 1;
   return kind === 'tobacco'
-    ? `≈ ${fmtGrams(pr.joint.tobacco * k)} par joint · ${fmtGrams(pr.rolled.tobacco * k)} par roulée`
-    : `≈ ${fmtGrams(pr.joint.cbd * k)} par joint`;
+    ? `≈ ${fmtGrams(pr.jointMix.tobacco * k)} par joint · ${fmtGrams(pr.rolled.tobacco * k)} par roulée`
+    : `≈ ${fmtGrams(pr.jointMix.cannabis * k)} par joint`;
 }
 
 function gauge(pack) {
   const r = packRemaining(pack, state.entries, state.settings);
   const frac = Math.max(0, Math.min(1, r.remaining / pack.size));
   const prior = priorsOf(state.settings);
-  const k = currentCalibration().factors[pack.kind] ?? 1;
-  const perJoint = (pack.kind === 'tobacco' ? prior.rolled.tobacco : prior.joint.cbd) * k;
+  const cal = currentCalibration();
+  const k = cal.factors[SUB[pack.kind]] ?? 1;
+  const perJoint = pack.kind === 'liquid' ? cal.factors.liquid : (pack.kind === 'tobacco' ? prior.rolled.tobacco : prior.jointMix.cannabis) * k;
   return { r, frac, left: perJoint ? Math.floor(r.remaining / perJoint) : null };
 }
 
@@ -47,9 +52,9 @@ function packRow(pack, compact = false) {
   const { r, frac, left } = gauge(pack);
   return h('div', { class: 'pack' },
     h('div', { class: 'pack-head' },
-      h('span', { class: `row-icon tone-${pack.kind === 'tobacco' ? 'blue' : 'green'}` }, icon(pack.kind === 'tobacco' ? 'rolled' : 'leafless', 16)),
-      h('div', { class: 'grow' }, h('b', null, prod?.name || KIND_LABEL[pack.kind]), h('span', { class: 'muted small' }, `${fmtNum(pack.size, 1)} g · ouvert le ${formatDayShort(pack.openedAt.slice(0, 10))}`)),
-      h('div', { class: 'pack-left' }, h('b', null, `≈ ${fmtGrams(r.remaining, 1)}`), h('span', { class: 'muted small' }, left != null ? `~${left} ${pack.kind === 'tobacco' ? 'roulées' : 'joints'}` : ''))),
+      h('span', { class: `row-icon tone-${pack.kind === 'tobacco' ? 'blue' : 'green'}` }, icon(pack.kind === 'tobacco' ? 'rolled' : pack.kind === 'liquid' ? 'vape' : 'leafless', 16)),
+      h('div', { class: 'grow' }, h('b', null, prod?.name || KIND_LABEL[pack.kind]), h('span', { class: 'muted small' }, `${fmtU(pack.size, pack.kind, 1)} · ouvert le ${formatDayShort(pack.openedAt.slice(0, 10))}`)),
+      h('div', { class: 'pack-left' }, h('b', null, `≈ ${fmtU(r.remaining, pack.kind, 1)}`), h('span', { class: 'muted small' }, left != null ? `~${left} ${pack.kind === 'tobacco' ? 'roulées' : pack.kind === 'liquid' ? 'sessions' : 'joints'}` : ''))),
     h('div', { class: 'pack-bar' }, h('i', { style: { width: `${Math.round(frac * 100)}%` }, class: pack.kind === 'tobacco' ? 'tob' : 'cbd' })),
     h('div', { class: 'row-actions' },
       h('button', { class: 'btn btn-ghost btn-sm', onclick: () => openCheckpoint(pack) }, 'Il en reste…'),
@@ -68,20 +73,21 @@ export function renderPacks(backHeader) {
     note('Pas besoin de balance. Indique la contenance de tes paquets et, de temps en temps, à l’œil, ce qu’il en reste. L’app répartit les grammes réellement partis sur tes joints et roulées, et l’estimation devient plus précise à chaque paquet.', 'positive'),
     h('div', { class: 'tiles tiles-2' },
       precisionTile('Tabac', 'tobacco', prec('tobacco')),
-      precisionTile('CBD', 'cbd', prec('cbd'))),
+      precisionTile('CBD', 'cbd', prec('cannabis')),
+      state.packs.some((p) => p.kind === 'liquid') ? precisionTile('E-liquide', 'liquid', prec('liquid')) : null),
     h('div', { class: 'section-title' }, h('h2', null, 'En cours'), h('button', { class: 'link', onclick: () => openPackForm({ kind: 'tobacco' }) }, 'Ajouter')),
     list.length ? h('div', { class: 'stack' }, list.map((p) => card(packRow(p)))) : card(emptyState({ icon: 'box', title: 'Aucun paquet déclaré', text: 'Ajoute ton paquet de tabac et ton CBD, même déjà entamés.' })),
     h('div', { class: 'row-actions' },
       h('button', { class: 'btn btn-primary', onclick: () => openPackForm({ kind: 'tobacco' }) }, icon('plus', 16), 'Paquet de tabac'),
       h('button', { class: 'btn btn-primary', onclick: () => openPackForm({ kind: 'cbd' }) }, icon('plus', 16), 'CBD')),
-    priorsCard(),
+    h('a', { class: 'banner banner-soft pack-cta', href: '#/profile/averages' }, h('span', { class: 'banner-main' }, icon('stats', 18), h('div', null, h('b', null, 'Mes moyennes'), h('span', null, 'Valeurs de départ, valeurs calculées, pesées et estimations'))), icon('chevron', 16)),
     finished.length ? h('div', null, h('div', { class: 'section-title' }, h('h2', null, 'Terminés')),
       card(finished.slice(0, 12).map((p) => {
         const segs = currentCalibration().segments.filter((s) => s.packId === p.id);
         const n = segs.reduce((t, s) => t + s.count, 0);
         return h('div', { class: 'row' },
           h('span', { class: `row-icon tone-${p.kind === 'tobacco' ? 'blue' : 'green'}` }, icon(p.kind === 'tobacco' ? 'rolled' : 'leafless', 16)),
-          h('span', { class: 'row-main' }, h('span', { class: 'row-title' }, `${productById(p.productId)?.name || KIND_LABEL[p.kind]} · ${fmtNum(p.size, 1)} g`),
+          h('span', { class: 'row-main' }, h('span', { class: 'row-title' }, `${productById(p.productId)?.name || KIND_LABEL[p.kind]} · ${fmtU(p.size, p.kind, 1)}`),
             h('span', { class: 'row-sub' }, `${formatDayShort(p.openedAt.slice(0, 10))} → ${formatDayShort(p.finishedAt.slice(0, 10))} · ${diffDays(p.openedAt.slice(0, 10), p.finishedAt.slice(0, 10)) + 1} j${n ? ` · ${n} conso.` : ''}`)),
           h('button', { class: 'icon-btn', 'aria-label': 'Supprimer ce paquet', onclick: async () => {
             if (await confirmDialog({ title: 'Supprimer ce paquet ?', message: 'Les quantités calculées à partir de ce paquet seront recalculées.', confirm: 'Supprimer', danger: true })) { await remove('packs', p.id); toast('Paquet supprimé'); }
@@ -95,22 +101,6 @@ function precisionTile(label, kind, p) {
     h('span', { class: `precision p${p.level}` }, h('i'), h('i'), h('i')),
     h('span', { class: 'tile-sub strong' }, p.label),
     h('span', { class: 'tile-sub' }, perUnitText(kind)));
-}
-
-function priorsCard() {
-  const pr = priorsOf(state.settings);
-  const draft = JSON.parse(JSON.stringify(pr));
-  const num = (obj, key) => decimalInput({ value: obj[key], unit: 'g', step: 0.05, onchange: (v) => { obj[key] = v; } });
-  return h('details', { class: 'form-details' }, h('summary', null, 'Valeurs de départ'),
-    h('div', { class: 'stack' },
-      h('p', { class: 'hint' }, 'Point de départ avant tout repère. Elles servent aussi de proportions entre joints et roulées : si ton joint contient environ autant de tabac qu’une roulée, mets la même valeur.'),
-      field('Roulée · tabac', num(draft.rolled, 'tobacco')),
-      field('Joint · tabac', num(draft.joint, 'tobacco')),
-      field('Joint · CBD', num(draft.joint, 'cbd')),
-      field('CBD seul (fleurs, résine)', num(draft.cbd, 'cbd')),
-      h('div', { class: 'row-actions' },
-        h('button', { class: 'btn btn-primary btn-sm', onclick: async () => { await saveSettings({ autoPriors: draft }); toast('Valeurs de départ enregistrées — quantités recalculées'); } }, 'Enregistrer'),
-        h('button', { class: 'btn btn-ghost btn-sm', onclick: async () => { await saveSettings({ autoPriors: JSON.parse(JSON.stringify(DEFAULT_PRIORS)) }); toast('Valeurs par défaut rétablies'); } }, 'Par défaut'))));
 }
 
 /* ------------------------------ Formulaires ------------------------------ */
@@ -128,10 +118,10 @@ export function openPackForm({ kind = 'tobacco', from } = {}) {
       const root = h('div', { class: 'stack form' });
       const render = () => {
         fill(root,
-          !from ? field('Produit', segmented([{ id: 'tobacco', label: 'Tabac' }, { id: 'cbd', label: 'CBD' }], pack.kind, (v) => { pack.kind = v; pack.productId = state.settings.defaultProducts[v]; pack.size = v === 'tobacco' ? 30 : 5; render(); }, { small: true })) : null,
+          !from ? field('Produit', segmented([{ id: 'tobacco', label: 'Tabac' }, { id: 'cbd', label: 'CBD / THC' }, { id: 'liquid', label: 'E-liquide' }], pack.kind, (v) => { pack.kind = v; pack.productId = state.settings.defaultProducts[v] || state.products.find((p) => p.kind === v && !p.archived)?.id || null; pack.size = v === 'tobacco' ? 30 : v === 'liquid' ? 10 : 5; render(); }, { small: true })) : null,
           prods().length > 1 ? field('Lequel', select(prods().map((p) => ({ id: p.id, label: p.name })), pack.productId, (v) => { pack.productId = v; })) : null,
-          field('Contenance du paquet', decimalInput({ value: pack.size, unit: 'g', step: pack.kind === 'tobacco' ? 5 : 1, onchange: (v) => { pack.size = v; } }),
-            pack.kind === 'tobacco' ? 'Ex. 30 g, 40 g, 50 g… indiquée sur le paquet.' : 'Ex. 1 g, 2 g, 5 g… la quantité achetée.'),
+          field(pack.kind === 'liquid' ? 'Contenance du flacon' : 'Contenance du paquet', decimalInput({ value: pack.size, unit: UNIT(pack.kind), step: pack.kind === 'tobacco' ? 5 : 1, onchange: (v) => { pack.size = v; } }),
+            pack.kind === 'tobacco' ? 'Ex. 30 g, 40 g, 50 g… indiquée sur le paquet.' : pack.kind === 'liquid' ? 'Ex. 10 ml, 50 ml…' : 'Ex. 1 g, 2 g, 5 g… la quantité achetée.'),
           field('État', segmented([{ id: 'new', label: 'Neuf' }, { id: 'started', label: 'Déjà entamé' }], pack.started ? 'started' : 'new', (v) => { pack.started = v === 'started'; render(); }, { small: true })),
           pack.started ? h('div', { class: 'stack-sm' },
             h('span', { class: 'field-label' }, 'Il en reste environ'),

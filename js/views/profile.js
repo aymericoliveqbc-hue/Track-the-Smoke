@@ -20,6 +20,9 @@ import { hashPin, newSalt, biometricAvailable, registerBiometric } from '../core
 import { healthContent } from './health.js';
 import { renderAppleHealth } from './applehealth.js';
 import { renderPacks } from './packs.js';
+import { renderAverages } from './averages.js';
+import { renderSetup } from './setup.js';
+import { methodOf } from '../domain/methods.js';
 import { renderAiSettings } from './projects.js';
 import { openBeforeForm } from './before.js';
 import { beforeMonthly } from '../domain/before.js';
@@ -30,7 +33,7 @@ const back = (title) => h('header', { class: 'view-head' },
   h('a', { class: 'icon-btn', href: '#/profile', 'aria-label': 'Retour' }, icon('back', 20)), h('h1', null, title), h('span', { class: 'spacer' }));
 
 export function renderProfile(sub) {
-  const pages = { products, purchases, stock, categories, notifications, privacy, data, prefs, health, about, applehealth: () => renderAppleHealth(back('Apple Santé')), packs: () => renderPacks(back('Mes paquets')), ai: () => renderAiSettings(back('Assistant IA')) };
+  const pages = { products, purchases, stock, categories, notifications, privacy, data, prefs, health, about, applehealth: () => renderAppleHealth(back('Apple Santé')), packs: () => renderPacks(back('Mes paquets')), averages: () => renderAverages(back('Mes moyennes')), ai: () => renderAiSettings(back('Assistant IA')) };
   if (sub && pages[sub]) return h('div', { class: 'view' }, pages[sub]());
   const s = state.settings;
   return h('div', { class: 'view' },
@@ -38,6 +41,7 @@ export function renderProfile(sub) {
     isDemo() ? h('div', { class: 'banner banner-demo' }, icon('demo', 18), h('div', null, h('b', null, 'Mode démonstration'), h('span', null, 'Données fictives, totalement séparées de tes données personnelles.')),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { await switchMode('main'); toast('Retour à tes données'); } }, 'Quitter')) : null,
     card(
+      listRow({ icon: 'sparkle', title: 'Mes habitudes', sub: habitsSummary(), onclick: openHabits }),
       listRow({ icon: 'box', iconTone: 'green', title: 'Mes paquets', sub: state.packs.some((p) => !p.finishedAt) ? `${state.packs.filter((p) => !p.finishedAt).length} en cours · calcul automatique des grammes` : 'Calcul automatique des grammes, sans balance', onclick: () => go('packs') }),
       listRow({ icon: 'wallet', title: 'Mes dépenses avant l\u2019app', sub: beforeMonthly(s.before) ? `≈ ${fmtMoney(beforeMonthly(s.before).total, { digits: 0 })} par mois` : 'Pour mesurer tes économies dès maintenant', onclick: openBeforeForm }),
       listRow({ icon: 'tag', title: 'Produits et prix', sub: `${state.products.filter((p) => !p.archived).length} produits`, onclick: () => go('products') }),
@@ -62,6 +66,17 @@ export function renderProfile(sub) {
 }
 
 const go = (sub) => { location.hash = `#/profile/${sub}`; };
+
+function habitsSummary() {
+  const hb = state.settings.habits;
+  if (!hb?.enabled?.length) return 'Choisir mes méthodes de consommation';
+  const names = hb.enabled.map((id) => state.categories.find((c) => c.id === id)?.short || methodOf(id)?.short || id);
+  return `${names.join(', ')}${hb.primary ? ` · principale : ${state.categories.find((c) => c.id === hb.primary)?.short || hb.primary}` : ''}`;
+}
+
+export function openHabits() {
+  openSheet({ title: 'Mes habitudes', size: 'full', build: (close) => renderSetup({ embedded: true, onDone: close }) });
+}
 
 /* ------------------------------ Produits ------------------------------ */
 
@@ -304,7 +319,7 @@ function data() {
   const backupsEl = h('div', { class: 'list' }, h('p', { class: 'muted pad' }, 'Chargement…'));
   listBackups().then((list) => {
     fill(backupsEl, ...(list.length ? list.map((b) => listRow({
-      icon: 'clock', title: formatDayLong(b.id.slice(7)), sub: `${b.payload.counts?.entries ?? 0} entrées · ${b.payload.counts?.nights ?? 0} nuits`,
+      icon: 'clock', title: b.id.includes('premigration') ? 'Avant la mise à jour V2' : formatDayLong(b.id.slice(7)), sub: `${b.payload.counts?.entries ?? 0} entrées · ${b.payload.counts?.nights ?? 0} nuits`,
       right: h('span', { class: 'link' }, 'Restaurer'),
       onclick: async () => {
         if (await confirmDialog({ title: 'Restaurer cet instantané ?', message: 'Les données actuelles seront remplacées par celles de cet instantané local.', confirm: 'Restaurer', danger: true })) {

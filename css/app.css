@@ -740,3 +740,49 @@ body { background: var(--bg); }
 .savings-warn { font-size: 12px; color: var(--c3); }
 .before-total { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px; text-align: center; }
 .before-total b { font-size: 26px; color: var(--primary); letter-spacing: -0.02em; }
+
+/* Mes moyennes */
+.avg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.avg-cell { background: var(--surface); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.avg-cell b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.avg-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--tone, var(--text-2)); }
+.tone-muted { --tone: var(--text-2); --tone-soft: var(--surface); }
+.avg-start { display: flex; flex-direction: column; gap: 6px; }
+.legend.reliability { gap: 6px; }
+.legend.reliability .badge { margin: 0; }
+
+/* ---------- V2 : configuration des habitudes ---------- */
+.setup { display: flex; flex-direction: column; gap: 18px; }
+.setup h2 { font-size: 26px; letter-spacing: -0.03em; }
+.catalog { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.catalog-tile { position: relative; background: var(--card); border-radius: 20px; box-shadow: var(--shadow); padding: 14px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; border: 2px solid transparent; transition: border-color .15s, transform .12s var(--ease); }
+.catalog-tile:active { transform: scale(.97); }
+.catalog-tile b { font-size: 15px; }
+.catalog-tile .small { line-height: 1.3; }
+.catalog-ill { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); margin-bottom: 6px; }
+.catalog-check { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: transparent; }
+.catalog-tile.on { border-color: var(--primary); }
+.catalog-tile.on .catalog-check { background: var(--primary); color: #fff; }
+.catalog-tile.on .catalog-ill { background: var(--primary); color: #fff; }
+.setup-ic { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); }
+.choice-row { display: flex; align-items: center; gap: 10px; }
+.choice-row .icon { color: var(--primary); }
+
+/* ---------- V2 : ajout et sessions ---------- */
+.add-tile.tile-primary { box-shadow: inset 0 0 0 2px var(--primary), var(--shadow); }
+.add-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.add-row .pill-btn { display: inline-flex; align-items: center; gap: 6px; }
+.running { display: flex; flex-direction: column; gap: 8px; background: var(--card); border-radius: 20px; box-shadow: var(--shadow); padding: 12px 14px; border: 1.5px solid color-mix(in srgb, var(--primary) 35%, transparent); }
+.running-row { display: flex; align-items: center; gap: 10px; }
+.running-row .grow { display: flex; flex-direction: column; }
+.running-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: pulse 1.6s ease-in-out infinite; flex: none; }
+@keyframes pulse { 50% { opacity: .3; transform: scale(.7); } }
+.puff-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; }
+.puff-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.puff-btn { height: 72px; border-radius: 20px; background: var(--primary-soft); color: var(--primary); font-size: 22px; font-weight: 700; }
+.puff-btn:active { background: var(--primary); color: #fff; transform: scale(.96); }
+.qty-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.qty-head .segmented { flex: none; }
+.v2-intro { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border-radius: 22px; box-shadow: var(--shadow); padding: 16px; }
+.v2-intro .grow { display: flex; flex-direction: column; gap: 4px; }
+.action-primary .action-icon { background: var(--primary); color: #fff; }
