@@ -4,6 +4,8 @@ Direction artistique : **Nature premium / Modern wellness**. Une application cal
 
 Cette refonte ne modifie ni la logique métier ni les données. Seules la feuille de style, les illustrations et la présentation des écrans ont changé.
 
+![Aperçu : accueil et journal en clair, Progrès et feuille « Ajouter » en sombre](screenshots/refonte.png)
+
 ## 1. Audit de l'existant (avant refonte)
 
 | Constat | Conséquence | Réponse |
