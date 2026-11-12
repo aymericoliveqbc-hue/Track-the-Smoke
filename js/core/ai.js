@@ -37,7 +37,7 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-const SYSTEM = `Tu aides une personne à chiffrer un projet personnel (voyage, déménagement, achat…) pour s'en servir comme objectif d'épargne.
+const SYSTEM = `Tu aides une personne à chiffrer un projet personnel (voyage, épargne, achat, logement, loisirs…) pour s'en servir comme objectif d'épargne.
 Donne un budget réaliste et prudent, décomposé en 3 à 8 postes, avec des montants en euros (nombres, sans symbole), arrondis à la dizaine.
 Pour chaque poste, une note courte (une phrase) qui explique l'hypothèse.
 N'ajoute pas de poste « imprévus » : l'application ajoute sa propre marge.

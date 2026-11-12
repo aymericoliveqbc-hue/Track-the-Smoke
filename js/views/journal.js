@@ -4,15 +4,16 @@ import { h, fill } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { card, segmented, chips, emptyState, openSheet, sectionTitle, badge } from '../ui/components.js';
 import { entryRow, nightRow, entriesOfDay, entryTitle } from '../ui/entries.js';
-import { openEntryForm, openCravingForm, openNightForm, openQuickAdd } from '../ui/forms.js';
-import { state, derived } from '../core/store.js';
+import { openEntryForm, openCravingForm, openNightForm, openQuickAdd, openPurchaseForm } from '../ui/forms.js';
+import { state, derived, productById, catById } from '../core/store.js';
 import {
   relativeDay, addMonths, startOfMonth, endOfMonth, daysBetween, weekday, WEEKDAYS_LETTER, MONTHS, formatDayLong, dayKey, addDays,
 } from '../core/dates.js';
 import { fmtGrams, fmtMoney, fmtNum, isNum } from '../core/format.js';
 import { summarize } from '../domain/stats.js';
 import { computeNight } from '../domain/sleep.js';
-import { labelOf, CONTEXTS, MOODS, TRIGGERS } from '../domain/models.js';
+import { labelOf, CONTEXTS, MOODS, TRIGGERS, moleculeLabel } from '../domain/models.js';
+import { components, moleculeClass } from '../domain/methods.js';
 import { formatDuration } from '../core/dates.js';
 
 const ui = { mode: 'list', filter: 'all', query: '', month: null, metric: 'count', limitDays: 21 };
@@ -28,22 +29,66 @@ export function renderJournal() {
 
 const rerender = () => window.dispatchEvent(new Event('tts:render'));
 
+/** Filtres dynamiques : seulement les méthodes activées ou réellement présentes. */
 function filterOptions() {
-  const cats = state.categories.filter((c) => !c.archived).map((c) => ({ id: c.id, label: c.short || c.name }));
-  return [{ id: 'all', label: 'Tout' }, ...cats, { id: 'craving', label: 'Envies' }, { id: 'resisted', label: 'Résistées' }, { id: 'night', label: 'Nuits' }];
+  const used = new Set(state.entries.filter((e) => e.kind === 'consumption').map((e) => e.categoryId));
+  const enabled = new Set(state.settings.habits?.enabled || []);
+  const cats = state.categories.filter((c) => used.has(c.id) || (enabled.has(c.id) && !c.archived)).map((c) => ({ id: c.id, label: c.short || c.name }));
+  const anyClass = (cls) => state.entries.some((e) => components(e).some((c) => c.substance === 'cannabis' && moleculeClass(c.molecule) === cls));
+  return [
+    { id: 'all', label: 'Tout' }, ...cats,
+    anyClass('cbd') ? { id: 'sub:cbd', label: 'CBD' } : null,
+    anyClass('thc') ? { id: 'sub:thc', label: 'THC' } : null,
+    state.entries.some((e) => e.endAt || e.status === 'running') ? { id: 'sessions', label: 'Sessions' } : null,
+    { id: 'craving', label: 'Envies' }, { id: 'resisted', label: 'Résistées' }, { id: 'night', label: 'Sommeil' },
+    state.purchases.length ? { id: 'purchase', label: 'Achats' } : null,
+  ].filter(Boolean);
 }
 
 function matches(e) {
   const f = ui.filter;
+  if (f === 'night' || f === 'purchase') return false;
   if (f === 'craving' && e.kind !== 'craving') return false;
   if (f === 'resisted' && !(e.kind === 'craving' && e.outcome !== 'consumed')) return false;
-  if (f !== 'all' && f !== 'craving' && f !== 'resisted' && f !== 'night' && e.categoryId !== f) return false;
-  if (f === 'night') return false;
+  if (f === 'sessions' && !(e.endAt || e.status === 'running')) return false;
+  if (f.startsWith('sub:') && !components(e).some((c) => c.substance === 'cannabis' && moleculeClass(c.molecule) === f.slice(4))) return false;
+  if (!['all', 'craving', 'resisted', 'sessions'].includes(f) && !f.startsWith('sub:') && e.categoryId !== f) return false;
   const q = ui.query.trim().toLowerCase();
   if (!q) return true;
-  const hay = [entryTitle(e), e.note, e.triggerOther, labelOf(CONTEXTS, e.context), labelOf(MOODS, e.mood), labelOf(TRIGGERS, e.trigger), labelOf(CONTEXTS, e.situation), e.at.slice(0, 10), e.at.slice(11)]
+  const products = components(e).map((c) => [productById(c.productId)?.name, productById(c.productId)?.brand, c.molecule ? moleculeLabel(c) : null]).flat();
+  const hay = [entryTitle(e), catById(e.categoryId)?.name, e.note, e.triggerOther, labelOf(CONTEXTS, e.context), labelOf(MOODS, e.mood), labelOf(TRIGGERS, e.trigger), labelOf(CONTEXTS, e.situation), e.at.slice(0, 10), e.at.slice(11), ...products]
     .filter(Boolean).join(' ').toLowerCase();
   return hay.includes(q);
+}
+
+function purchaseMatches(p) {
+  if (!['all', 'purchase'].includes(ui.filter)) return false;
+  const q = ui.query.trim().toLowerCase();
+  if (!q) return ui.filter === 'purchase' || ui.filter === 'all';
+  const prod = productById(p.productId);
+  return [prod?.name, prod?.brand, p.supplier, p.date, 'achat'].filter(Boolean).join(' ').toLowerCase().includes(q);
+}
+
+function purchaseRow(p) {
+  const prod = productById(p.productId);
+  return h('button', { class: 'tl-item', onclick: () => openPurchaseForm({ purchase: p }) },
+    h('span', { class: 'tl-time' }, 'achat'),
+    h('span', { class: 'tl-dot tone-orange' }, icon('wallet', 14)),
+    h('span', { class: 'tl-main' }, h('span', { class: 'tl-title' }, prod?.name || 'Achat'), h('span', { class: 'tl-sub' }, `${p.packCount > 1 ? `${p.packCount} × ` : ''}${fmtNum(p.packSize, 1)} ${prod?.kind === 'accessory' || prod?.kind === 'cigarettes' ? 'u.' : prod?.unit || ''}${p.supplier ? ' · ' + p.supplier : ''}`)),
+    h('span', { class: 'tl-cost' }, fmtMoney((p.packPrice || 0) * (p.packCount || 1))));
+}
+
+function daySummary(s) {
+  return [
+    s.counts.total ? `${s.counts.total} conso.` : null,
+    s.tobacco.total ? fmtGrams(s.tobacco.total) + ' tabac' : null,
+    s.cbd.total ? fmtGrams(s.cbd.total) + ' CBD' : null,
+    s.thc.total ? fmtGrams(s.thc.total) + ' THC' : null,
+    s.units.cigarettes ? `${fmtNum(s.units.cigarettes, 1)} cig.` : null,
+    s.liquid.total ? `${fmtNum(s.liquid.total, 1)} ml` : null,
+    s.puffs ? `${s.puffs} bouffées` : null,
+    s.cost.total ? fmtMoney(s.cost.total) : null,
+  ].filter(Boolean).join(' · ');
 }
 
 function listView() {
@@ -63,6 +108,7 @@ function listView() {
     const days = new Map();
     for (const e of items) { const d = e.at.slice(0, 10); if (!days.has(d)) days.set(d, { entries: [], night: null }); days.get(d).entries.push(e); }
     for (const n of nights) { const d = addDays(n.date, 1); if (!days.has(d)) days.set(d, { entries: [], night: null }); days.get(d).night = n; }
+    for (const p of state.purchases.filter(purchaseMatches)) { const d = p.date; if (!days.has(d)) days.set(d, { entries: [], night: null }); (days.get(d).purchases ||= []).push(p); }
     const keys = [...days.keys()].sort().reverse();
     if (!keys.length) {
       fill(listEl, card(emptyState(state.entries.length || state.nights.length
@@ -80,13 +126,8 @@ function listView() {
         return h('section', { class: 'day-group' },
           h('button', { class: 'day-head', onclick: () => openDay(d) },
             h('span', { class: 'day-name' }, relativeDay(d)),
-            h('span', { class: 'day-sum' }, [
-              s.counts.total ? `${s.counts.total} conso.` : null,
-              s.tobacco.total ? fmtGrams(s.tobacco.total) + ' tabac' : null,
-              s.cbd.total ? fmtGrams(s.cbd.total) + ' CBD' : null,
-              s.cost.total ? fmtMoney(s.cost.total) : null,
-            ].filter(Boolean).join(' · ')), icon('chevron', 14)),
-          h('div', { class: 'timeline card' }, g.night ? nightRow(g.night) : null, list.map((e) => entryRow(e))));
+            h('span', { class: 'day-sum' }, daySummary(s)), icon('chevron', 14)),
+          h('div', { class: 'timeline card' }, g.night ? nightRow(g.night) : null, list.map((e) => entryRow(e)), (g.purchases || []).map(purchaseRow)));
       }),
       keys.length > shown.length ? h('button', { class: 'btn btn-ghost btn-block', onclick: () => { ui.limitDays += 21; renderList(); } }, `Afficher plus (${keys.length - shown.length} jours)`) : null);
   };
@@ -96,14 +137,20 @@ function listView() {
 
 /* ----------------------------- Calendrier ----------------------------- */
 
-const METRICS = [
-  { id: 'count', label: 'Conso.' },
-  { id: 'tobacco', label: 'Tabac' },
-  { id: 'cbd', label: 'CBD' },
-  { id: 'cost', label: '€' },
-  { id: 'resisted', label: 'Envies' },
-  { id: 'sleep', label: 'Sommeil' },
-];
+/** Vues du calendrier, selon les habitudes réellement présentes. */
+function calendarMetrics() {
+  const has = (pred) => state.entries.some((e) => components(e).some(pred));
+  return [
+    { id: 'count', label: 'Conso.' },
+    has((c) => c.substance === 'tobacco') ? { id: 'tobacco', label: 'Tabac' } : null,
+    has((c) => c.substance === 'cannabis' && moleculeClass(c.molecule) === 'cbd') ? { id: 'cbd', label: 'CBD' } : null,
+    has((c) => c.substance === 'cannabis' && moleculeClass(c.molecule) === 'thc') ? { id: 'thc', label: 'THC' } : null,
+    has((c) => c.substance === 'liquid' || c.substance === 'puffs') ? { id: 'vape', label: 'Vape' } : null,
+    { id: 'cost', label: '€' },
+    { id: 'resisted', label: 'Envies' },
+    { id: 'sleep', label: 'Sommeil' },
+  ].filter(Boolean);
+}
 
 function calendarView() {
   const { ctx, today } = derived();
@@ -122,6 +169,8 @@ function calendarView() {
       case 'count': return v.s.counts.total;
       case 'tobacco': return v.s.tobacco.total;
       case 'cbd': return v.s.cbd.total;
+      case 'thc': return v.s.thc.total;
+      case 'vape': return v.s.liquid.total || v.s.puffs || 0;
       case 'cost': return v.s.cost.total;
       case 'resisted': return v.s.cravings.resisted;
       case 'sleep': return v.night?.quality ?? null;
@@ -170,7 +219,7 @@ function calendarView() {
       h('button', { class: 'icon-btn', 'aria-label': 'Mois précédent', onclick: () => { ui.month = addMonths(month, -1); rerender(); } }, icon('back', 18)),
       h('h3', null, `${MONTHS[m - 1]} ${y}`),
       h('button', { class: 'icon-btn', 'aria-label': 'Mois suivant', disabled: addMonths(month, 1) > today, onclick: () => { ui.month = addMonths(month, 1); rerender(); } }, icon('chevron', 18))),
-    segmented(METRICS, ui.metric, (v) => { ui.metric = v; rerender(); }, { small: true }),
+    segmented(calendarMetrics(), ui.metric, (v) => { ui.metric = v; rerender(); }, { small: true }),
     card(grid, h('div', { class: 'legend' },
       h('span', { class: 'legend-item' }, h('i', { class: 'd-green' }), 'Envie résistée'),
       h('span', { class: 'legend-item' }, h('i', { class: 'd-blue' }), 'Nuit notée'),

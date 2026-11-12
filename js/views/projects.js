@@ -1,4 +1,4 @@
-// Projets d'épargne (Canada, voyage, achat…) + assistant IA facultatif.
+// Projets d'épargne (voyage, épargne, achat, logement, loisirs…) + assistant IA facultatif.
 
 import { h, fill } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -8,7 +8,8 @@ import { state, save, remove, derived } from '../core/store.js';
 import { addDays, formatDayLong, formatDayShort, dayKey, MONTHS } from '../core/dates.js';
 import { fmtMoney, fmtNum, isNum, round2 } from '../core/format.js';
 import { summarize } from '../domain/stats.js';
-import { PROJECT_TEMPLATES, templateOf, newProject, projectTotal, projectPlan } from '../domain/projects.js';
+import { PROJECT_TEMPLATES, templateOf, newProject, projectTotal, projectPlan, allocations } from '../domain/projects.js';
+import { beforeMonthly, beforeSavings } from '../domain/before.js';
 import { uid } from '../domain/models.js';
 import { estimateProject, hasAiKey, getAiKey, setAiKey } from '../core/ai.js';
 import { beforePerDay } from './before.js';
@@ -21,7 +22,24 @@ function costPerDay(days) {
   return s.coverage ? s.cost.total / s.coverage.days : null;
 }
 const refNow = () => beforePerDay() || state.settings.baseline?.costPerDay || costPerDay(30);
-const planOf = (p) => projectPlan(p, { entries: state.entries, ctx: derived().ctx, currentPerDay: costPerDay(14), fallbackRef: refNow() });
+/**
+ * Économie commune depuis une date : « avant l'app » si renseigné (réel),
+ * sinon null (chaque projet utilise alors sa propre référence figée).
+ */
+function sharedSavingsFn() {
+  const b = state.settings.before;
+  if (!beforeMonthly(b)) return null;
+  const { ctx } = derived();
+  return (start) => {
+    const from = b.startDate && b.startDate > start ? b.startDate : start;
+    const r = beforeSavings({ ...b, startDate: from }, state.entries, ctx, 1);
+    return r ? { amount: r.saved, days: r.fullDays } : { amount: 0, days: 0 };
+  };
+}
+const planOf = (p) => {
+  const shares = allocations(projects());
+  return projectPlan(p, { entries: state.entries, ctx: derived().ctx, currentPerDay: costPerDay(14), fallbackRef: refNow(), sharedSavings: sharedSavingsFn(), share: shares.get(p.id) ?? 100 });
+};
 
 /** Fige la dépense de référence dès qu'elle est connue (prix renseignés). */
 async function freezeRef(p) {
@@ -145,7 +163,7 @@ function addDeposit(p, closeDetail) {
 export function openProjectForm({ project: existing } = {}) {
   const editing = !!existing;
   const ref = refNow();
-  let p = existing ? JSON.parse(JSON.stringify(existing)) : newProject('move', ref, dayKey());
+  let p = existing ? JSON.parse(JSON.stringify(existing)) : newProject('travel', ref, dayKey());
   openSheet({
     title: editing ? 'Modifier le projet' : 'Nouveau projet',
     size: 'full',
@@ -156,11 +174,11 @@ export function openProjectForm({ project: existing } = {}) {
       const render = () => {
         const t = templateOf(p.template);
         fill(root,
-          !editing ? h('div', { class: 'add-grid' }, PROJECT_TEMPLATES.map((x) => h('button', {
+          !editing ? h('div', { class: 'add-grid' }, PROJECT_TEMPLATES.filter((x) => !x.hidden).map((x) => h('button', {
             class: `add-tile ${x.id === p.template ? 'tile-on' : ''}`,
             onclick: () => { const keep = { name: p.name, description: p.description, targetDate: p.targetDate, saved: p.saved }; p = { ...newProject(x.id, ref, dayKey()), ...keep }; render(); },
           }, h('span', { class: 'add-icon' }, icon(x.icon, 22)), h('span', { class: 'add-label' }, x.label)))) : null,
-          field('Nom', textInput({ value: p.name, placeholder: t.id === 'move' ? 'Ex. Partir au Canada' : t.id === 'travel' ? 'Ex. Lisbonne' : 'Ex. Nouveau vélo', oninput: (v) => { p.name = v; } })),
+          field('Nom', textInput({ value: p.name, placeholder: { travel: 'Ex. Une semaine au soleil', savings: 'Ex. Épargne de précaution', purchase: 'Ex. Un vélo', realestate: 'Ex. Apport logement', leisure: 'Ex. Un festival' }[t.id] || 'Nom du projet', oninput: (v) => { p.name = v; } })),
           field('En quelques mots', textArea({ value: p.description, rows: 2, placeholder: t.placeholder, oninput: (v) => { p.description = v; } })),
           aiBlock(p, render),
           h('div', { class: 'form-block' },
@@ -171,14 +189,17 @@ export function openProjectForm({ project: existing } = {}) {
               h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Retirer', onclick: () => { p.items.splice(i, 1); render(); } }, icon('close', 16)))),
             h('button', { type: 'button', class: 'link', onclick: () => { p.items.push({ id: uid('it'), label: '', amount: null }); render(); } }, '+ Ajouter un poste'),
             p.buffer ? h('p', { class: 'hint' }, `Inclut ${Math.round(p.buffer * 100)} % d’imprévus.`) : null),
-          h('details', { class: 'form-details', open: !!(p.targetDate || p.saved) }, h('summary', null, 'Date visée et épargne existante'),
+          h('details', { class: 'form-details', open: !!(p.targetDate || p.saved || isNum(p.allocation)) }, h('summary', null, 'Date visée, épargne existante, part des économies'),
             h('div', { class: 'stack' },
+              field('Part de tes économies attribuée à ce projet', decimalInput({ value: isNum(p.allocation) ? p.allocation : null, unit: '%', step: 5, max: 100, onchange: (v) => { p.allocation = v; } }),
+                `Le total de tous tes projets ne dépasse jamais 100 % : une économie n’est jamais comptée deux fois. Vide = répartition automatique du reste${otherShares(p) ? ` (déjà attribué ailleurs : ${otherShares(p)} %)` : ''}.`),
               field('J’aimerais y être le', h('input', { class: 'input', type: 'date', value: p.targetDate || '', min: dayKey(), onchange: (e) => { p.targetDate = e.target.value || null; } })),
               field('Déjà mis de côté', decimalInput({ value: p.saved || null, unit: '€', stepper: false, onchange: (v) => { p.saved = v || 0; } })))),
           h('div', { class: 'form-actions sticky-actions' },
             h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: async () => {
               p.items = p.items.filter((it) => it.label.trim() || isNum(it.amount));
               if (!projectTotal(p)) { toast('Indique au moins un montant (ou utilise l’IA)', { tone: 'warn' }); return; }
+              if (isNum(p.allocation) && p.allocation + otherShares(p) > 100) { toast(`Parts trop élevées : il reste ${Math.max(0, 100 - otherShares(p))} % disponibles`, { tone: 'warn' }); return; }
               if (!p.name.trim()) p.name = templateOf(p.template).label;
               await save('goals', p); close(); toast(editing ? 'Projet mis à jour' : 'Projet créé'); openProjectDetail(p);
             } }, editing ? 'Enregistrer' : 'Créer le projet')));
@@ -232,4 +253,9 @@ export function renderAiSettings(backHeader) {
         hasAiKey() ? h('button', { class: 'btn btn-ghost', onclick: () => { setAiKey(''); toast('Clé supprimée'); window.dispatchEvent(new Event('tts:render')); } }, 'Supprimer la clé') : null)),
     note('Ta clé reste uniquement sur ce téléphone et n’est jamais incluse dans les sauvegardes. Seuls le nom et la description du projet sont envoyés à Anthropic, jamais tes données de consommation ou de sommeil. Chaque estimation coûte quelques centimes sur ton compte API.', 'info'),
     h('p', { class: 'hint' }, 'Crée une clé sur console.anthropic.com (compte API, distinct d’un abonnement Claude). Sans clé, les projets fonctionnent quand même : tu saisis toi-même les montants.'));
+}
+
+/** Somme des parts fixées sur les autres projets actifs. */
+function otherShares(p) {
+  return projects().filter((x) => x.id !== p.id && x.active !== false && isNum(x.allocation)).reduce((t, x) => t + x.allocation, 0);
 }

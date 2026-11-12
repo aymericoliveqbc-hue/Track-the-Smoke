@@ -5,7 +5,9 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { card, cardHead, emptyState, note, badge, segmented, openSheet, toast, field, statTile } from '../ui/components.js';
 import { ring, lineChart, COLORS } from '../ui/charts.js';
-import { openGoalForm, formatGoalValue } from '../ui/forms.js';
+import { openGoalForm, formatGoalValue, goalLabel } from '../ui/forms.js';
+import { methodJourney } from '../domain/goals.js';
+import { MODES } from './setup.js';
 import { projectsSection } from './projects.js';
 import { state, derived, saveSettings, maybeComputeBaseline } from '../core/store.js';
 import { addDays, dayKey, formatDayLong, formatDayShort, formatElapsed } from '../core/dates.js';
@@ -45,10 +47,15 @@ export function renderGoals({ embedded = false } = {}) {
   // Référence
   if (s.baseline) root.append(baselineCard(s.baseline));
 
-  // Parcours
-  root.append(h('div', { class: 'section-title' }, h('h2', null, 'Parcours')));
-  root.append(journeyCard('tobacco', 'Arrêt du tabac', COLORS.blue));
-  root.append(journeyCard('cbd', 'Arrêt du CBD', COLORS.green));
+  // Parcours par méthode (libre / réduction / arrêt), indépendants.
+  const mcards = (s.habits?.enabled || []).map((id) => methodCard(id, ctx)).filter(Boolean);
+  if (mcards.length) {
+    root.append(h('div', { class: 'section-title' }, h('h2', null, 'Mes méthodes')));
+    root.append(...mcards);
+  }
+  root.append(h('div', { class: 'section-title' }, h('h2', null, 'Par substance')));
+  root.append(journeyCard('tobacco', 'Tabac (toutes méthodes)', COLORS.blue));
+  root.append(journeyCard('cbd', 'CBD (toutes méthodes)', COLORS.green));
 
   // Objectifs
   root.append(h('div', { class: 'section-title' }, h('h2', null, 'Mes objectifs'), h('button', { class: 'link', onclick: () => openGoalForm() }, 'Ajouter')));
@@ -188,7 +195,7 @@ function goalCard(g, ctx) {
     h('button', { class: 'goal-head', 'aria-label': `Modifier l'objectif ${m.label}`, onclick: () => openGoalForm({ goal: g }) },
       ring(ev.progress ?? (ev.reached ? 1 : 0), 52, ev.reached ? COLORS.primary : COLORS.blue, ev.progress != null ? `${Math.round(ev.progress * 100)}%` : ''),
       h('div', { class: 'grow' },
-        h('h3', null, m.label, !g.active ? ' (en pause)' : ''),
+        h('h3', null, goalLabel(g.metric), !g.active ? ' (en pause)' : ''),
         h('p', { class: 'muted small' }, `${m.dir === 'down' ? 'Au plus' : 'Au moins'} ${fmt(ev.target)}${nextStep ? ` · prochain palier ${fmt(nextStep.target)} le ${formatDayShort(nextStep.date)}` : ''}`), status),
       icon('edit', 16, 'row-chevron')),
     h('div', { class: 'goal-values' },
@@ -200,3 +207,26 @@ function goalCard(g, ctx) {
     g.revisions?.length ? h('p', { class: 'hint' }, `Modifié ${g.revisions.length} fois · historique conservé`) : null);
 }
 
+
+/** Carte d'une méthode : mode modifiable à tout moment, compteurs indépendants. */
+function methodCard(id, ctx) {
+  const cat = state.categories.find((c) => c.id === id);
+  if (!cat) return null;
+  const md = state.settings.habits?.modes?.[id] || { mode: 'free' };
+  const j = methodJourney(id, md, state.entries, ctx);
+  const setMode = async (patch) => {
+    const modes = { ...(state.settings.habits?.modes || {}), [id]: { ...md, ...patch } };
+    await saveSettings({ habits: { ...state.settings.habits, modes } });
+  };
+  return card(
+    h('div', { class: 'card-head' }, h('h3', { class: 'card-title' }, cat.name), h('span', { class: 'muted small' }, j.last ? `dernière fois il y a ${formatElapsed(j.sinceLastMin)}` : 'jamais notée')),
+    segmented(MODES.map((m) => ({ id: m.id, label: m.label })), md.mode || 'free', (v) => setMode({ mode: v, quitDate: v === 'quit' ? (md.quitDate || ctx.today) : md.quitDate }), { small: true }),
+    md.mode === 'quit' ? field('Date d\u2019arrêt', h('input', { class: 'input', type: 'date', value: md.quitDate || ctx.today, max: ctx.today, onchange: (e) => { if (e.target.value) setMode({ quitDate: e.target.value }); } })) : null,
+    j.quit ? h('div', { class: 'mini-grid' },
+      h('div', null, h('b', null, `${j.quit.days} j`), h('span', null, 'depuis l\u2019arrêt')),
+      h('div', null, h('b', null, `${j.quit.daysWithout} / ${j.quit.days}`), h('span', null, 'jours sans')),
+      h('div', null, h('b', null, `${j.quit.bestStreak} j`), h('span', null, 'plus longue série'))) : null,
+    j.quit?.occurrences ? h('p', { class: 'hint' }, `${j.quit.occurrences} consommation(s) depuis l\u2019arrêt : tes jours sans restent acquis.`) : null,
+    md.mode !== 'quit' && j.last7 != null ? h('p', { class: 'hint' }, `7 derniers jours : ${fmtNum(j.last7, 1)} / jour${j.prev7 != null ? ` (semaine d\u2019avant : ${fmtNum(j.prev7, 1)})` : ''}.`) : null,
+    md.mode === 'reduce' ? h('button', { class: 'btn btn-ghost btn-sm', onclick: () => openGoalForm({ metric: `method:${id}` }) }, icon('plus', 14), 'Fixer un objectif pour cette méthode') : null);
+}

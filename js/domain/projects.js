@@ -15,26 +15,14 @@ import { summarize } from './stats.js';
 import { uid } from './models.js';
 
 export const PROJECT_TEMPLATES = [
-  {
-    id: 'travel', label: 'Voyage', icon: 'flag',
-    items: ['Transport aller-retour', 'Logement', 'Repas & sorties', 'Activités', 'Assurance voyage'], buffer: 0.1,
-    placeholder: 'Ex. 1 semaine à Lisbonne en juin, 2 personnes',
-  },
-  {
-    id: 'move', label: 'S’installer ailleurs', icon: 'home',
-    items: ['Billets d’avion', 'Visa / permis', 'Premier loyer + caution', 'Installation (meubles, équipement)', 'Assurance santé', 'Fonds de sécurité (premiers mois)'], buffer: 0.1,
-    placeholder: 'Ex. Déménager à Montréal, 1 personne, permis vacances-travail',
-  },
-  {
-    id: 'purchase', label: 'Un achat', icon: 'tag',
-    items: ['Prix'], buffer: 0,
-    placeholder: 'Ex. Un vélo électrique',
-  },
-  {
-    id: 'other', label: 'Autre', icon: 'sparkle',
-    items: ['Montant'], buffer: 0,
-    placeholder: 'Décris ton projet',
-  },
+  { id: 'travel', label: 'Voyage', icon: 'flag', items: ['Transport', 'Hébergement', 'Repas & sorties', 'Activités'], buffer: 0.1, placeholder: 'Ex. une semaine au soleil' },
+  { id: 'savings', label: 'Épargne', icon: 'wallet', items: ['Montant à mettre de côté'], buffer: 0, placeholder: 'Ex. un coussin de sécurité' },
+  { id: 'purchase', label: 'Achat personnel', icon: 'tag', items: ['Prix'], buffer: 0, placeholder: 'Ex. un vélo, un ordinateur' },
+  { id: 'realestate', label: 'Projet immobilier', icon: 'home', items: ['Apport', 'Frais', 'Travaux / installation'], buffer: 0.05, placeholder: 'Ex. apport pour un logement' },
+  { id: 'leisure', label: 'Loisirs', icon: 'sparkle', items: ['Montant'], buffer: 0, placeholder: 'Ex. un abonnement, un concert, un cours' },
+  { id: 'other', label: 'Autre', icon: 'goals', items: ['Montant'], buffer: 0, placeholder: 'Décris ton projet' },
+  // Ancien modèle (projets créés avant la V2) : conservé pour l'affichage, non proposé.
+  { id: 'move', label: 'Projet de vie', icon: 'home', hidden: true, items: ['Montant'], buffer: 0.1, placeholder: '' },
 ];
 export const templateOf = (id) => PROJECT_TEMPLATES.find((t) => t.id === id) || PROJECT_TEMPLATES[3];
 
@@ -45,8 +33,26 @@ export function newProject(templateId, refPerDay, today) {
     items: t.items.map((label) => ({ id: uid('it'), label, amount: null })),
     buffer: t.buffer, targetDate: null, saved: 0, deposits: [],
     startDate: today, refPerDay: isNum(refPerDay) && refPerDay > 0 ? round2(refPerDay) : null,
-    ai: null, active: true, createdAt: new Date().toISOString(),
+    ai: null, active: true, allocation: null, createdAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Part (%) des économies de réduction attribuée à chaque projet, sans jamais
+ * dépasser 100 % au total : une même économie n'est jamais comptée deux fois.
+ * Projets sans part explicite : le reste disponible est réparti à parts égales.
+ */
+export function allocations(projects) {
+  const active = projects.filter((p) => p.active !== false);
+  const fixed = active.filter((p) => isNum(p.allocation));
+  const fixedSum = Math.min(100, fixed.reduce((t, p) => t + Math.max(0, p.allocation), 0));
+  const free = active.filter((p) => !isNum(p.allocation));
+  const share = free.length ? (100 - fixedSum) / free.length : 0;
+  const out = new Map();
+  let used = 0;
+  for (const p of fixed) { const v = Math.max(0, Math.min(p.allocation, 100 - used)); out.set(p.id, v); used += v; }
+  for (const p of free) out.set(p.id, share);
+  return out;
 }
 
 export function projectTotal(p) {
@@ -68,15 +74,21 @@ const monthsBetween = (a, b) => diffDays(a, b) / 30.44;
  * Plan d'un projet.
  * @param currentPerDay dépense quotidienne actuelle (ex. moyenne 14–30 j)
  */
-export function projectPlan(p, { entries, ctx, currentPerDay, fallbackRef = null }) {
+export function projectPlan(p, { entries, ctx, currentPerDay, fallbackRef = null, sharedSavings = null, share = null }) {
   const total = projectTotal(p);
-  const red = reductionSavings(p, entries, ctx);
+  // V2 : économie commune (« avant l'app » ou référence) × part du projet.
+  let red = reductionSavings(p, entries, ctx);
+  if (sharedSavings) {
+    const g = sharedSavings(p.startDate);
+    red = { amount: Math.max(0, g.amount) * ((share ?? 100) / 100), days: g.days };
+  }
   const manual = (p.saved || 0) + (p.deposits || []).reduce((t, d) => t + (d.amount || 0), 0);
   const saved = Math.max(0, red.amount) + manual;
   const remaining = Math.max(0, total - saved);
   // Référence figée à la création ; sinon (prix encore inconnus) référence courante.
   const ref = isNum(p.refPerDay) ? p.refPerDay : (isNum(fallbackRef) && fallbackRef > 0 ? fallbackRef : null);
-  const pace = isNum(ref) && isNum(currentPerDay) ? Math.max(0, ref - currentPerDay) * 30.44 : 0;
+  const sh = (share ?? 100) / 100;
+  const pace = isNum(ref) && isNum(currentPerDay) ? Math.max(0, ref - currentPerDay) * 30.44 * (sharedSavings ? sh : 1) : 0;
 
   const eta = (monthly) => (monthly > 0 ? addDays(ctx.today, Math.ceil((remaining / monthly) * 30.44)) : null);
   const scenarios = isNum(ref) && ref > 0
@@ -84,6 +96,8 @@ export function projectPlan(p, { entries, ctx, currentPerDay, fallbackRef = null
     : [];
 
   let deadline = null;
+  // Montant cible direct (sans postes) accepté.
+  if (!total && isNum(p.target)) return projectPlan({ ...p, items: [{ label: 'Objectif', amount: p.target }], buffer: 0 }, { entries, ctx, currentPerDay, fallbackRef, sharedSavings, share });
   if (p.targetDate && p.targetDate > ctx.today && remaining > 0) {
     const months = monthsBetween(ctx.today, p.targetDate);
     const neededMonthly = remaining / months;
@@ -98,6 +112,6 @@ export function projectPlan(p, { entries, ctx, currentPerDay, fallbackRef = null
   return {
     total, saved, manual, fromReduction: red.amount, days: red.days, remaining,
     progress: total > 0 ? Math.min(1, saved / total) : 0,
-    ref, refFrozen: isNum(p.refPerDay), currentPerDay, paceMonthly: pace, etaAtPace: eta(pace), scenarios, deadline, done: total > 0 && remaining <= 0,
+    ref, refFrozen: isNum(p.refPerDay), currentPerDay, paceMonthly: pace, share: share ?? 100, etaAtPace: eta(pace), scenarios, deadline, done: total > 0 && remaining <= 0,
   };
 }

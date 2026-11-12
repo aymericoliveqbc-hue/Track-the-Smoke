@@ -127,15 +127,15 @@ export function buildDemoData(today = dayKey(), days = 42, now = `${today}T23:59
     { id: 'goal_d3', metric: 'resisted_share', target: 0.5, startDate: addDays(start, 14), active: true, note: '', steps: [], revisions: [], createdAt: new Date().toISOString() },
   ];
   goals.push({
-    id: 'prj_demo', kind: 'project', template: 'move', name: 'Partir au Canada', description: 'Montréal, 1 personne, permis vacances-travail',
+    id: 'prj_demo', kind: 'project', template: 'travel', name: 'Grand voyage', description: 'Trois semaines, deux personnes',
     items: [
-      { id: 'i1', label: 'Billet d\u2019avion', amount: 650, note: 'Aller simple' },
-      { id: 'i2', label: 'Permis vacances-travail', amount: 250, note: 'Frais officiels' },
-      { id: 'i3', label: 'Premier loyer + caution', amount: 2400, note: 'Studio meublé' },
-      { id: 'i4', label: 'Fonds de sécurité', amount: 4500, note: '3 mois' },
+      { id: 'i1', label: 'Transport', amount: 900, note: '' },
+      { id: 'i2', label: 'Hébergement', amount: 1200, note: '' },
+      { id: 'i3', label: 'Repas & sorties', amount: 700, note: '' },
+      { id: 'i4', label: 'Activités', amount: 400, note: '' },
     ],
     buffer: 0.1, targetDate: addDays(today, 365), saved: 300, deposits: [], startDate: addDays(start, 14), refPerDay: 4.2,
-    ai: null, active: true, createdAt: new Date().toISOString(),
+    ai: null, active: true, allocation: null, createdAt: new Date().toISOString(),
   });
   settings.quickDefaults = {
     joint: { tobacco: { grams: 0.2, method: 'estimated', productId: 'prd_tobacco' }, cbd: { amount: 0.16, unit: 'g', method: 'estimated', productId: 'prd_cbd_flower', form: 'flower' }, accessories: [{ type: 'slim', productId: null, count: 1 }, { type: 'filter', productId: null, count: 1 }] },

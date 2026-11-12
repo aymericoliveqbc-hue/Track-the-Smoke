@@ -4,11 +4,13 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { badge } from './components.js';
 import { state, derived, catById } from '../core/store.js';
-import { fmtGrams, fmtMoney, fmtQty, isNum } from '../core/format.js';
+import { fmtGrams, fmtMoney, fmtQty, isNum, fmtNum } from '../core/format.js';
 import { formatDuration } from '../core/dates.js';
 import { TRIGGERS, CRAVING_PRODUCTS, labelOf, CONTEXTS, moleculeLabel } from '../domain/models.js';
+import { components, reliabilityOf, RELIABILITY, COMPLETION } from '../domain/methods.js';
+import { sessionMinutes } from '../domain/stats.js';
 import { computeNight } from '../domain/sleep.js';
-import { openEntryForm, openCravingForm, openNightForm } from './forms.js';
+import { openEntryForm, openCravingForm, openNightForm, openFinishSheet } from './forms.js';
 
 const methodBadge = (m) => (m === 'weighed' ? badge('pesé', 'violet') : m === 'estimated' ? badge('estimé', 'muted') : m === 'auto' ? badge('≈ auto', 'green') : null);
 
@@ -37,11 +39,23 @@ export function entryRow(e, { showDate = false } = {}) {
   const { cost } = derived();
   const c = cost(e);
   const parts = [];
-  if (e.tobacco) parts.push(h('span', null, `Tabac ${isNum(e.tobacco.grams) ? fmtGrams(e.tobacco.grams) : '?'}`, methodBadge(e.tobacco.method)));
-  if (e.cbd) parts.push(h('span', null, `${moleculeLabel(e.cbd)} ${isNum(e.cbd.amount) ? fmtQty(e.cbd.amount, e.cbd.unit) : '?'}`, e.tobacco?.method !== e.cbd.method || !e.tobacco ? methodBadge(e.cbd.method) : null));
+  for (const comp of components(e)) {
+    const rel = reliabilityOf(comp);
+    const tag = RELIABILITY[rel]?.short ? badge(RELIABILITY[rel].short, RELIABILITY[rel].tone) : null;
+    const qty = isNum(comp.amount) ? (comp.substance === 'units' ? `${fmtNum(comp.amount, 2)}` : comp.substance === 'puffs' ? `${comp.amount}` : fmtQty(comp.amount, comp.unit)) : '?';
+    const label = comp.substance === 'tobacco' ? `Tabac ${qty}` : comp.substance === 'cannabis' ? `${moleculeLabel(comp)} ${qty}`
+      : comp.substance === 'liquid' ? `E-liquide ${qty}` : comp.substance === 'puffs' ? `${qty} bouffée${comp.amount > 1 ? 's' : ''}`
+        : `${qty} ${comp.productKind === 'cigars' ? 'pièce(s)' : 'cig.'}`;
+    parts.push(h('span', null, label, comp.substance === 'units' || comp.substance === 'puffs' ? null : tag));
+  }
   if (e.quantity && isNum(e.quantity.amount)) parts.push(h('span', null, `${fmtQty(e.quantity.amount, e.quantity.unit)}`));
+  const dur = sessionMinutes(e);
+  if (e.status === 'running') parts.push(h('span', { class: 'live' }, 'en cours'));
+  else if (dur != null) parts.push(h('span', null, formatDuration(dur)));
+  if (e.completion && e.completion !== 'done') parts.push(h('span', null, labelOf(COMPLETION, e.completion).toLowerCase()));
+  if (e.exceptional) parts.push(badge('exceptionnelle', 'muted'));
   if (e.context) parts.push(h('span', null, labelOf(CONTEXTS, e.context)));
-  return h('button', { class: 'tl-item', onclick: () => openEntryForm({ entry: e }) },
+  return h('button', { class: 'tl-item', onclick: () => (e.status === 'running' ? openFinishSheet(e.id) : openEntryForm({ entry: e })) },
     h('span', { class: 'tl-time' }, showDate ? `${e.at.slice(8, 10)}/${e.at.slice(5, 7)} ` : '', e.at.slice(11, 16)),
     h('span', { class: `tl-dot tone-${cat?.color || 'violet'}` }, icon(cat?.icon || 'custom', 14)),
     h('span', { class: 'tl-main' },

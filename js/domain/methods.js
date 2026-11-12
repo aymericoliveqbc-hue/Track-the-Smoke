@@ -126,8 +126,8 @@ export function components(e) {
   if (!e || e.kind !== 'consumption') return [];
   const out = [];
   if (e.tobacco) out.push({ path: 'tobacco', substance: 'tobacco', productKind: 'tobacco', productId: e.tobacco.productId, amount: e.tobacco.grams, unit: 'g', method: e.tobacco.method, basis: e.tobacco.basis });
-  if (e.cbd) out.push({ path: 'cbd', substance: 'cannabis', productKind: 'cbd', productId: e.cbd.productId, amount: e.cbd.amount, unit: e.cbd.unit || 'g', method: e.cbd.method, molecule: e.cbd.molecule || 'cbd', form: e.cbd.form, basis: e.cbd.basis });
-  (e.extra || []).forEach((x, i) => out.push({ path: `extra.${i}`, substance: 'cannabis', productKind: 'cbd', productId: x.productId, amount: x.amount, unit: x.unit || 'g', method: x.method, molecule: x.molecule || 'unknown', form: x.form, basis: x.basis }));
+  if (e.cbd) out.push({ path: 'cbd', substance: 'cannabis', productKind: 'cbd', productId: e.cbd.productId, amount: e.cbd.amount, unit: e.cbd.unit || 'g', method: e.cbd.method, molecule: e.cbd.molecule || 'cbd', moleculeOther: e.cbd.moleculeOther, form: e.cbd.form, basis: e.cbd.basis });
+  (e.extra || []).forEach((x, i) => out.push({ path: `extra.${i}`, substance: 'cannabis', productKind: 'cbd', productId: x.productId, amount: x.amount, unit: x.unit || 'g', method: x.method, molecule: x.molecule || 'unknown', moleculeOther: x.moleculeOther, form: x.form, basis: x.basis }));
   if (e.liquid) out.push({ path: 'liquid', substance: 'liquid', productKind: 'liquid', productId: e.liquid.productId, amount: e.liquid.ml, unit: 'ml', method: e.liquid.method, basis: e.liquid.basis });
   if (e.units) out.push({ path: 'units', substance: 'units', productKind: e.units.kind || 'cigarettes', productId: e.units.productId, amount: e.units.count, unit: 'unit', method: e.units.method || 'counted' });
   if (e.puffs) out.push({ path: 'puffs', substance: 'puffs', productKind: 'puff', productId: e.puffs.productId, amount: e.puffs.count, unit: 'puff', method: 'counted' });

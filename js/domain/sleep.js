@@ -154,10 +154,13 @@ export function sleepPairs(nights, entries, range, xKey, yKey) {
         case 'eveningTobacco': return ctx.evening.tobacco;
         case 'eveningCount': return ctx.evening.count;
         case 'nightCravings': return ctx.nightCravings;
+        default:
+          if (k.startsWith('eveningCat:')) return ctx.evening.list.filter((e) => e.kind === 'consumption' && e.categoryId === k.slice(11)).length;
+          if (k.startsWith('dayCat:')) return entries.filter((e) => e.kind === 'consumption' && e.categoryId === k.slice(7) && e.at.slice(0, 10) === n.date).length;
+          return null;
         case 'quality': return n.quality;
         case 'latency': return c.latencyMin;
         case 'total': return c.totalSleepMin != null ? c.totalSleepMin / 60 : null;
-        default: return null;
       }
     };
     const x = pick(xKey); const y = pick(yKey);

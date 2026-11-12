@@ -5,7 +5,7 @@
 //  - Une consommation après un arrêt n'efface jamais les progrès : on compte
 //    les jours sans, on ne remet aucun compteur à zéro.
 
-import { addDays, diffDays, daysBetween, minutesOfDay, nowLocal, minutesSince } from '../core/dates.js';
+import { addDays, diffDays, daysBetween, minutesOfDay, nowLocal, minutesSince, minutesBetween } from '../core/dates.js';
 import { isNum } from '../core/format.js';
 import { summarize, coverage, entriesIn, isConsumption, lastWhere, mean } from './stats.js';
 import { uid } from './models.js';
@@ -74,7 +74,11 @@ export const GOAL_METRICS = [
   { id: 'first_hour', label: 'Première consommation', unit: 'heure', dir: 'up', track: 'habits', base: 'firstHourMin', time: true },
 ];
 
-export const metricOf = (id) => GOAL_METRICS.find((m) => m.id === id);
+export const metricOf = (id) => {
+  if (id?.startsWith('method:')) return { id, label: `Consommations · ${id.slice(7)}`, unit: '/ jour', dir: 'down', track: 'method', base: null, methodId: id.slice(7) };
+  if (id === 'interval') return { id, label: 'Temps entre deux consommations', unit: 'min', dir: 'up', track: 'habits', base: null, minutes: true };
+  return GOAL_METRICS.find((m) => m.id === id);
+};
 
 export function newGoal(metric, target, startDate) {
   return {
@@ -114,7 +118,15 @@ export function measureMetric(metric, entries, range, ctx) {
     case 'spend': return { value: (s.cost.total / d) * 7, coverage: cov, missing: s.cost.incomplete };
     case 'resisted_share': return { value: s.cravings.total ? s.cravings.resisted / s.cravings.total : null, coverage: cov, n: s.cravings.total };
     case 'first_hour': { const m = mean(firstConsumptionTimes(entries, cov)); return { value: m.value, coverage: cov, n: m.n }; }
-    default: return { value: null, coverage: cov };
+    case 'interval': {
+      const starts = entriesIn(entries, cov).filter(isConsumption).map((e) => e.at).sort();
+      const iv = [];
+      for (let i = 1; i < starts.length; i++) { const d = minutesBetween(starts[i - 1], starts[i]); if (d != null && d < 16 * 60) iv.push(d); }
+      const m = mean(iv); return { value: m.value, coverage: cov, n: m.n };
+    }
+    default:
+      if (metric?.startsWith('method:')) return { value: (s.counts.byCategory[metric.slice(7)] || 0) / d, coverage: cov };
+      return { value: null, coverage: cov };
   }
 }
 
@@ -213,3 +225,25 @@ export function realizedSavings(entries, baseline, ctx) {
 }
 
 export { coverage };
+
+/**
+ * Parcours d'une méthode (mode réduction ou arrêt) : dernière fois, jours
+ * sans depuis l'arrêt, plus longue série. Rien n'est remis à zéro.
+ */
+export function methodJourney(categoryId, mode, entries, ctx, now = nowLocal()) {
+  const pred = (e) => isConsumption(e) && e.categoryId === categoryId;
+  const last = lastWhere(entries, pred);
+  const out = { categoryId, mode: mode?.mode || 'free', last, sinceLastMin: last ? minutesSince(last.at, now) : null };
+  const quit = mode?.mode === 'quit' ? mode.quitDate : null;
+  if (quit && quit <= ctx.today) {
+    const days = daysBetween(quit, ctx.today);
+    const after = entries.filter((e) => pred(e) && e.at.slice(0, 10) >= quit);
+    const withC = new Set(after.map((e) => e.at.slice(0, 10)));
+    out.quit = { date: quit, days: days.length, daysWithout: days.length - withC.size, occurrences: after.length, bestStreak: bestStreak(days, withC) };
+  }
+  const r7 = summarize(entries, { start: addDays(ctx.today, -6), end: ctx.today }, ctx);
+  const p7 = summarize(entries, { start: addDays(ctx.today, -13), end: addDays(ctx.today, -7) }, ctx);
+  out.last7 = r7.coverage ? (r7.counts.byCategory[categoryId] || 0) / r7.coverage.days : null;
+  out.prev7 = p7.coverage ? (p7.counts.byCategory[categoryId] || 0) / p7.coverage.days : null;
+  return out;
+}

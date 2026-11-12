@@ -11,11 +11,11 @@ import {
   state, derived, saveSettings, isDemo, switchMode, resetDemo, replaceAllData, wipeAll, listBackups,
 } from '../core/store.js';
 import { dayKey, formatDayShort, formatDayLong, MONTHS, isTime } from '../core/dates.js';
-import { fmtMoney, fmtNum, fmtQty, UNITS } from '../core/format.js';
+import { fmtMoney, fmtNum, fmtQty, UNITS, isNum } from '../core/format.js';
 import { priceAt, purchaseTotal } from '../domain/costs.js';
 import { computeStock } from '../domain/stock.js';
 import { buildExport, validateImport, mergeData, entriesToCSV } from '../domain/backup.js';
-import { CBD_FORMS, ACCESSORY_TYPES, labelOf, MOLECULES } from '../domain/models.js';
+import { CBD_FORMS, ACCESSORY_TYPES, labelOf, MOLECULES, PRODUCT_KINDS } from '../domain/models.js';
 import { hashPin, newSalt, biometricAvailable, registerBiometric } from '../core/lock.js';
 import { healthContent } from './health.js';
 import { renderAppleHealth } from './applehealth.js';
@@ -66,6 +66,8 @@ export function renderProfile(sub) {
 }
 
 const go = (sub) => { location.hash = `#/profile/${sub}`; };
+const KIND_FOR_METHOD = { cigarette: 'cigarettes', cigar: 'cigars', cigarillo: 'cigars', vape: 'liquid', puff: 'puff' };
+const usesKind = (kind) => (state.settings.habits?.enabled || []).some((m) => KIND_FOR_METHOD[m] === kind || (kind === 'device' && m === 'vape'));
 
 function habitsSummary() {
   const hb = state.settings.habits;
@@ -94,16 +96,19 @@ function products() {
     const list = state.products.filter((p) => p.kind === kind && filter(p)).sort((a, b) => Number(a.archived) - Number(b.archived));
     return h('div', null, sectionTitle(title, h('button', { class: 'link', onclick: () => openProductForm({ kind }) }, 'Ajouter')),
       card(list.length ? list.map((p) => listRow({
-        icon: kind === 'tobacco' ? 'rolled' : kind === 'cbd' ? 'leafless' : 'box', iconTone: kind === 'tobacco' ? 'blue' : kind === 'cbd' ? 'green' : 'violet',
+        icon: { tobacco: 'rolled', cbd: 'leaf', cigarettes: 'cigarette', cigars: 'cigar', liquid: 'vape', puff: 'puff', device: 'vape' }[kind] || 'box', iconTone: 'green',
         title: h('span', null, p.name || 'Sans nom', Object.values(d).includes(p.id) ? badge('par défaut', 'violet') : null, p.archived ? badge('archivé') : null),
-        sub: [p.brand, kind === 'cbd' ? labelOf(CBD_FORMS, p.cbdForm) : kind === 'accessory' ? labelOf(ACCESSORY_TYPES, p.accessoryType) : null].filter(Boolean).join(' · ') || null,
+        sub: [p.brand, kind === 'cbd' ? labelOf(CBD_FORMS, p.cbdForm) : kind === 'accessory' ? labelOf(ACCESSORY_TYPES, p.accessoryType) : null,
+          isNum(p.nicotineMgPerMl) ? `${p.nicotineMgPerMl} mg/ml` : null, isNum(p.nicotinePerUnit) ? `${p.nicotinePerUnit} mg/cig.` : null, isNum(p.tankMl) ? `réservoir ${p.tankMl} ml` : null,
+          kind === 'puff' ? (p.finishedAt ? 'terminée' : p.openedAt ? 'en cours' : null) : null].filter(Boolean).join(' · ') || null,
         right: priceLabel(p),
         onclick: () => openProductForm({ product: p }),
       })) : h('p', { class: 'muted pad' }, 'Aucun produit.')));
   };
   return h('div', { class: 'stack' }, back('Produits et prix'),
     note('Le prix appliqué à une consommation est celui de l’achat le plus récent à sa date. Sans achat, le tarif de référence du produit est utilisé. Sans prix connu, le coût est signalé comme incomplet.', 'info'),
-    group('Tabac', 'tobacco'), group('CBD', 'cbd'), group('Accessoires', 'accessory'),
+    ...PRODUCT_KINDS.filter((k) => ['tobacco', 'cbd', 'accessory'].includes(k.id) || state.products.some((p) => p.kind === k.id) || usesKind(k.id)).map((k) => group(k.label, k.id)),
+    h('button', { class: 'btn btn-ghost btn-block', onclick: () => openProductForm({ kind: 'cigarettes' }) }, icon('plus', 16), 'Autre type de produit (cigarettes, e-liquide, puff…)'),
     h('button', { class: 'btn btn-primary btn-block', onclick: () => openPurchaseForm() }, icon('plus', 16), 'Enregistrer un achat'));
 }
 
@@ -142,13 +147,13 @@ function stock() {
     card(toggle(!!s.enabled, async (on) => { await saveSettings({ stock: { enabled: on, since: s.since || today } }); }, 'Suivre mes stocks'),
       h('p', { class: 'hint' }, 'Le stock diminue automatiquement à chaque consommation dont la quantité est connue. Les saisies sans quantité ne sont jamais déduites.'))];
   if (!s.enabled) return h('div', { class: 'stack' }, ...body);
-  body.push(h('button', { class: 'btn btn-ghost btn-block', onclick: () => openInventoryForm() }, icon('edit', 16), 'Corriger un stock manuellement'));
+  body.push(h('button', { class: 'btn btn-ghost btn-block', onclick: () => openInventoryForm() }, icon('edit', 16), 'Stock initial, comptage, ajustement ou perte'));
   const data = { purchases: state.purchases, inventories: state.inventories, entries: state.entries, settings: state.settings };
   for (const p of state.products.filter((x) => !x.archived)) {
     const st = computeStock(p, data, today);
     const unit = p.kind === 'accessory' ? 'unit' : p.unit;
     body.push(h('section', { class: 'card' },
-      cardHead(p.name, h('button', { class: 'link', onclick: () => openInventoryForm({ productId: p.id }) }, 'Corriger')),
+      cardHead(p.name, h('button', { class: 'link', onclick: () => openInventoryForm({ productId: p.id }) }, 'Mouvement')),
       st.quantity == null ? h('p', { class: 'muted' }, 'Stock inconnu : enregistre un achat ou corrige le stock pour commencer.') : h('div', { class: 'mini-grid' },
         h('div', null, h('b', { class: st.quantity < 0 ? 'warn-text' : '' }, fmtQty(st.quantity, unit)), h('span', null, 'restant')),
         h('div', null, h('b', null, st.avgDaily != null ? fmtQty(st.avgDaily, unit) : '—'), h('span', null, 'par jour (30 j)')),
@@ -157,7 +162,7 @@ function stock() {
       st.unknownUsages ? h('p', { class: 'hint' }, `${st.unknownUsages} consommation(s) sans quantité non déduite(s) : le stock réel peut être inférieur.`) : null,
       st.history.length ? h('details', { class: 'form-details' }, h('summary', null, 'Historique'),
         h('div', { class: 'list' }, st.history.slice(-12).reverse().map((ev) => h('div', { class: 'row' },
-          h('span', { class: 'row-main' }, h('span', { class: 'row-title' }, ev.type === 'purchase' ? 'Achat' : ev.type === 'inventory' ? 'Correction' : 'Consommation'), h('span', { class: 'row-sub' }, `${formatDayShort(ev.at.slice(0, 10))} ${ev.at.slice(11)}`)),
+          h('span', { class: 'row-main' }, h('span', { class: 'row-title' }, { purchase: 'Achat', inventory: 'Comptage', usage: 'Consommation', adjust: 'Ajustement', loss: 'Perte' }[ev.type] || ev.type), h('span', { class: 'row-sub' }, `${formatDayShort(ev.at.slice(0, 10))} ${ev.at.slice(11)}`)),
           h('span', { class: 'row-right' }, ev.type === 'inventory' ? `= ${fmtQty(ev.qty, unit)}` : `${ev.delta > 0 ? '+' : ''}${fmtNum(ev.delta, 2)} → ${fmtQty(ev.qty, unit)}`))))) : null));
   }
   return h('div', { class: 'stack' }, ...body);

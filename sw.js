@@ -31,6 +31,7 @@ const ASSETS = [
   './js/domain/costs.js',
   './js/domain/cravings.js',
   './js/domain/demo.js',
+  './js/domain/finance.js',
   './js/domain/goals.js',
   './js/domain/health.js',
   './js/domain/insights.js',
@@ -60,6 +61,7 @@ const ASSETS = [
   './js/views/projects.js',
   './js/views/profile.js',
   './js/views/stats.js',
+  './js/views/setup.js',
 ];
 
 self.addEventListener('install', (event) => {

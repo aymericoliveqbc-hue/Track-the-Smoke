@@ -12,7 +12,7 @@ import { nowLocal, dayKey, addDays, formatDuration, hm, timeKey, isTime } from '
 import { fmtGrams, fmtMoney, fmtQty, isNum, round2, UNITS, fmtNum, parseDecimal, toInput } from '../core/format.js';
 import {
   uid, CAT, CBD_FORMS, CBD_MODES, CONTEXTS, MOODS, TRIGGERS, CRAVING_PRODUCTS, WAKE_FEELINGS, METHODS, ACCESSORY_TYPES,
-  normalizeAccessories, newProduct, newCustomCategory, labelOf, MOLECULES, moleculeOf, moleculeLabel,
+  normalizeAccessories, newProduct, newCustomCategory, labelOf, MOLECULES, moleculeOf, moleculeLabel, PRODUCT_KINDS, productKindOf,
 } from '../domain/models.js';
 import { unitPrice, purchaseTotal } from '../domain/costs.js';
 import { mean } from '../domain/stats.js';
@@ -177,7 +177,7 @@ export function openNightForm({ date } = {}) {
 const kindLabel = { tobacco: 'Tabac', cbd: 'CBD', accessory: 'Accessoire' };
 
 function productLabel(p) {
-  const sub = p.kind === 'cbd' ? labelOf(CBD_FORMS, p.cbdForm) : p.kind === 'accessory' ? labelOf(ACCESSORY_TYPES, p.accessoryType) : 'Tabac';
+  const sub = p.kind === 'cbd' ? `${labelOf(CBD_FORMS, p.cbdForm)} ${moleculeOf(p.molecule || 'cbd').short}` : p.kind === 'accessory' ? labelOf(ACCESSORY_TYPES, p.accessoryType) : productKindOf(p.kind).label;
   return `${p.name || 'Sans nom'} · ${sub}`;
 }
 
@@ -253,12 +253,29 @@ export function openProductForm({ product: existing, kind = 'tobacco', onSaved }
         })();
         let setDefault = isDefault;
         fill(root, 
-          !editing ? field('Type', segmented([{ id: 'tobacco', label: 'Tabac' }, { id: 'cbd', label: 'CBD' }, { id: 'accessory', label: 'Accessoire' }], p.kind, (v) => {
-            Object.assign(p, newProduct(v), { id: p.id, name: p.name });
+          !editing ? field('Type', select(PRODUCT_KINDS.map((k) => ({ id: k.id, label: k.label })), p.kind, (v) => {
+            Object.assign(p, newProduct(v || 'tobacco'), { id: p.id, name: p.name });
             render();
-          }, { small: true })) : h('p', { class: 'muted' }, kindLabel[p.kind]),
-          field('Nom', textInput({ value: p.name, placeholder: p.kind === 'tobacco' ? 'Ex. Tabac à rouler' : p.kind === 'cbd' ? 'Ex. Fleurs CBD' : 'Ex. Feuilles slim', oninput: (v) => { p.name = v; } })),
-          p.kind === 'tobacco' ? field('Marque', textInput({ value: p.brand, placeholder: 'Facultatif', oninput: (v) => { p.brand = v; } })) : null,
+          })) : h('p', { class: 'muted' }, productKindOf(p.kind).label),
+          field('Nom', textInput({ value: p.name, placeholder: { tobacco: 'Ex. Tabac à rouler', cbd: 'Ex. Fleurs CBD', cigarettes: 'Ex. Blondes 20', cigars: 'Ex. Cigarillos', liquid: 'Ex. Menthe fraîche', puff: 'Ex. Puff 600', device: 'Ex. Ma vape', accessory: 'Ex. Feuilles slim' }[p.kind] || '', oninput: (v) => { p.name = v; } })),
+          ['tobacco', 'cigarettes', 'cigars', 'liquid', 'puff'].includes(p.kind) ? field('Marque', textInput({ value: p.brand, placeholder: 'Facultatif', oninput: (v) => { p.brand = v; } })) : null,
+          p.kind === 'cigarettes' ? field('Nicotine par cigarette (si indiquée)', decimalInput({ value: p.nicotinePerUnit, unit: 'mg', step: 0.1, stepper: false, onchange: (v) => { p.nicotinePerUnit = v; } })) : null,
+          p.kind === 'cigars' ? field('Format', segmented([{ id: 'cigar', label: 'Cigare' }, { id: 'cigarillo', label: 'Cigarillo' }], p.cigarType || 'cigar', (v) => { p.cigarType = v; }, { small: true })) : null,
+          p.kind === 'liquid' || p.kind === 'puff' ? field('Nicotine (0 si sans nicotine)', decimalInput({ value: p.nicotineMgPerMl, unit: 'mg/ml', step: 1, stepper: false, onchange: (v) => { p.nicotineMgPerMl = v; } })) : null,
+          p.kind === 'liquid' ? field('Type de liquide', textInput({ value: p.liquidType || '', placeholder: 'Ex. sel de nicotine, fruité… (facultatif)', oninput: (v) => { p.liquidType = v; } })) : null,
+          p.kind === 'puff' ? h('div', { class: 'stack' },
+            field('Type', segmented([{ id: 'disposable', label: 'Jetable' }, { id: 'rechargeable', label: 'Rechargeable' }, { id: 'pod', label: 'Pod' }], p.puffType || 'disposable', (v) => { p.puffType = v; }, { small: true })),
+            h('div', { class: 'grid-2' },
+              field('Liquide total (si connu)', decimalInput({ value: p.puffMl, unit: 'ml', step: 0.5, stepper: false, onchange: (v) => { p.puffMl = v; } })),
+              field('Nicotine totale (si indiquée)', decimalInput({ value: p.nicotineTotalMg, unit: 'mg', step: 1, stepper: false, onchange: (v) => { p.nicotineTotalMg = v; } }))),
+            h('div', { class: 'grid-2' },
+              field('Ouverte le', h('input', { class: 'input', type: 'date', value: p.openedAt?.slice(0, 10) || '', onchange: (e) => { p.openedAt = e.target.value ? `${e.target.value}T00:00` : null; } })),
+              field('Terminée le', h('input', { class: 'input', type: 'date', value: p.finishedAt?.slice(0, 10) || '', onchange: (e) => { p.finishedAt = e.target.value ? `${e.target.value}T23:59` : null; } }))),
+            h('p', { class: 'hint' }, 'Une fois terminée, le coût par bouffée devient réel : prix ÷ bouffées réellement enregistrées.')) : null,
+          p.kind === 'device' ? h('div', { class: 'stack' },
+            field('Modèle', textInput({ value: p.model || '', placeholder: 'Facultatif', oninput: (v) => { p.model = v; } })),
+            field('Capacité du réservoir', decimalInput({ value: p.tankMl, unit: 'ml', step: 0.5, stepper: false, onchange: (v) => { p.tankMl = v; } })),
+            field('Type d\u2019appareil', textInput({ value: p.deviceType || '', placeholder: 'Ex. pod, box, stylo (facultatif)', oninput: (v) => { p.deviceType = v; } }))) : null,
           p.kind === 'cbd' ? moleculeField(p, 'molecule') : null,
           p.kind === 'cbd' ? field('Forme', chips(CBD_FORMS, p.cbdForm, (v) => { p.cbdForm = v || 'flower'; p.unit = CBD_FORMS.find((f) => f.id === p.cbdForm).unit === 'drop' ? 'drop' : p.cbdForm === 'other' ? p.unit : 'g'; render(); }, { allowNone: false })) : null,
           p.kind === 'cbd' && (p.cbdForm === 'oil' || p.cbdForm === 'other') ? field('Unité de mesure', segmented(['g', 'ml', 'drop', 'unit'].map((u) => ({ id: u, label: UNITS[u].label })), p.unit, (v) => { p.unit = v; }, { small: true })) : null,
@@ -269,7 +286,7 @@ export function openProductForm({ product: existing, kind = 'tobacco', onSaved }
             h('p', { class: 'hint' }, 'Utilisé uniquement si aucun achat n’est enregistré. Les achats datés priment toujours.'),
             h('div', { class: 'grid-2' },
               field('Prix du paquet', decimalInput({ value: p.refPackPrice, unit: '€', stepper: false, onchange: (v) => { p.refPackPrice = v; } })),
-              field(p.kind === 'accessory' ? 'Unités' : 'Contenance', decimalInput({ value: p.refPackSize, unit: p.kind === 'accessory' ? 'u.' : UNITS[p.unit].short, stepper: false, onchange: (v) => { p.refPackSize = v; } })))),
+              field(productKindOf(p.kind).sizeLabel, decimalInput({ value: p.refPackSize, unit: p.kind === 'accessory' || p.kind === 'cigarettes' || p.kind === 'cigars' ? 'u.' : UNITS[p.unit]?.short || '', stepper: false, onchange: (v) => { p.refPackSize = v; } })))),
           toggle(isDefault, (on) => { setDefault = on; }, 'Produit par défaut pour cette catégorie'),
           h('div', { class: 'form-actions sticky-actions' },
             h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: async () => {
@@ -292,21 +309,38 @@ export function openProductForm({ product: existing, kind = 'tobacco', onSaved }
   });
 }
 
+const STOCK_MOVES = [
+  { id: 'count', label: 'Compté', hint: 'Quantité réellement restante, comptée ou estimée à l\u2019œil.', field: 'Il reste' },
+  { id: 'initial', label: 'Stock initial', hint: 'Ce que tu avais au début du suivi.', field: 'Quantité de départ' },
+  { id: 'adjust+', label: 'Ajout', hint: 'Ajout hors achat (cadeau, partage…).', field: 'Quantité ajoutée' },
+  { id: 'adjust-', label: 'Retrait', hint: 'Retrait hors consommation (donné…).', field: 'Quantité retirée' },
+  { id: 'loss', label: 'Perte', hint: 'Perdu, abîmé, jeté.', field: 'Quantité perdue' },
+];
+
 export function openInventoryForm({ productId } = {}) {
-  const inv = { id: uid('inv'), productId: productId || state.settings.defaultProducts.tobacco, at: nowLocal(), quantity: null, note: '' };
+  const inv = { id: uid('inv'), productId: productId || state.settings.defaultProducts.tobacco, at: nowLocal(), quantity: null, note: '', type: 'count' };
+  let move = 'count';
   openSheet({
-    title: 'Corriger le stock',
+    title: 'Mouvement de stock',
     build: (close) => {
-      const prod = () => productById(inv.productId);
-      const unit = () => (prod()?.kind === 'accessory' ? 'u.' : UNITS[prod()?.unit || 'g'].short);
-      const qty = decimalInput({ value: null, unit: unit(), stepper: false, onchange: (v) => { inv.quantity = v; } });
-      return h('div', { class: 'stack form' },
-        field('Produit', select(state.products.filter((p) => !p.archived).map((p) => ({ id: p.id, label: productLabel(p) })), inv.productId, (v) => { inv.productId = v; })),
-        field('Quantité réellement restante', qty, 'Les consommations suivantes seront déduites à partir de cette valeur.'),
-        h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: async () => {
-          if (!isNum(inv.quantity)) { toast('Indique la quantité restante.', { tone: 'warn' }); return; }
-          await save('inventories', inv); close(); toast('Stock corrigé');
-        } }, 'Enregistrer'));
+      const root = h('div', { class: 'stack form' });
+      const render = () => {
+        const prod = productById(inv.productId);
+        const unit = prod?.kind === 'accessory' || prod?.kind === 'cigarettes' || prod?.kind === 'cigars' ? 'u.' : UNITS[prod?.unit || 'g']?.short || '';
+        const m = STOCK_MOVES.find((x) => x.id === move);
+        fill(root,
+          field('Produit', select(state.products.filter((p) => !p.archived && p.kind !== 'device').map((p) => ({ id: p.id, label: productLabel(p) })), inv.productId, (v) => { inv.productId = v; render(); })),
+          field('Type', chips(STOCK_MOVES.map((x) => ({ id: x.id, label: x.label })), move, (v) => { move = v || 'count'; render(); }, { allowNone: false })),
+          field(m.field, decimalInput({ value: inv.quantity, unit, stepper: false, onchange: (v) => { inv.quantity = v; } }), m.hint),
+          field('Date', h('input', { class: 'input', type: 'datetime-local', value: inv.at, onchange: (e) => { if (e.target.value) inv.at = e.target.value.slice(0, 16); } })),
+          h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: async () => {
+            if (!isNum(inv.quantity) || inv.quantity < 0) { toast('Indique une quantité.', { tone: 'warn' }); return; }
+            const rec = { ...inv, type: move.startsWith('adjust') ? 'adjust' : move, quantity: move === 'adjust-' ? -inv.quantity : inv.quantity };
+            await save('inventories', rec); close(); toast('Stock mis à jour');
+          } }, 'Enregistrer'));
+      };
+      render();
+      return root;
     },
   });
 }
@@ -371,7 +405,7 @@ function goalInput(metric, value, onchange) {
     return h('input', { class: 'input', type: 'time', value: v, onchange: (e) => onchange(hm(e.target.value)) });
   }
   if (m.pct) return decimalInput({ value: isNum(value) ? Math.round(value * 100) : null, unit: '%', step: 5, max: 100, onchange: (v) => onchange(v == null ? null : v / 100) });
-  const step = metric === 'spend' ? 1 : metric.endsWith('_g') ? 0.05 : 0.5;
+  const step = metric === 'spend' ? 1 : metric === 'interval' ? 15 : metric.endsWith('_g') ? 0.05 : 0.5;
   return decimalInput({ value, unit: m.unit, step, onchange });
 }
 
@@ -380,6 +414,7 @@ export function formatGoalValue(metric, v) {
   if (!isNum(v)) return '—';
   if (m.time) return `${Math.floor(v / 60)} h ${String(Math.round(v % 60)).padStart(2, '0')}`;
   if (m.pct) return `${Math.round(v * 100)} %`;
+  if (m.minutes) return formatDuration(v);
   if (metric === 'spend') return `${fmtMoney(v)} / sem.`;
   if (metric.endsWith('_g')) return `${fmtGrams(v)} / j`;
   return `${fmtNum(v, 1)} / j`;
@@ -397,7 +432,7 @@ export function openGoalForm({ goal: existing, metric } = {}) {
         const m = metricOf(g.metric);
         const base = baselineValue(g.metric, state.settings.baseline);
         fill(root, 
-          !editing ? field('Ce que tu veux suivre', select(GOAL_METRICS.map((x) => ({ id: x.id, label: `${x.label} (${x.unit})` })), g.metric, (v) => { g = { ...g, metric: v, target: null, steps: [] }; render(); })) : h('h3', null, `${m.label} · ${m.unit}`),
+          !editing ? field('Ce que tu veux suivre', select(goalOptions(), g.metric, (v) => { g = { ...g, metric: v, target: null, steps: [] }; render(); })) : h('h3', null, `${goalLabel(g.metric)} · ${m.unit}`),
           base != null ? note(`Ta référence : ${formatGoalValue(g.metric, base)}.`, 'info') : note('Pas encore de référence : elle sera calculée à la fin de ta période d’observation (ou depuis Objectifs).', 'info'),
           field(m.dir === 'down' ? 'Cible (au plus)' : 'Cible (au moins)', goalInput(g.metric, g.target, (v) => { g.target = v; })),
           h('div', { class: 'form-block' },
@@ -432,3 +467,17 @@ export function openGoalForm({ goal: existing, metric } = {}) {
 }
 
 export { parseDecimal, toInput, fmtNum };
+
+/** Objectifs proposés : génériques + par méthode activée + espacement. */
+function goalOptions() {
+  const enabled = state.settings.habits?.enabled?.length ? state.settings.habits.enabled : state.categories.filter((c) => !c.archived).map((c) => c.id);
+  return [
+    ...enabled.map((id) => ({ id: `method:${id}`, label: `${catById(id)?.name || id} (par jour)` })),
+    ...GOAL_METRICS.map((x) => ({ id: x.id, label: `${x.label} (${x.unit})` })),
+    { id: 'interval', label: 'Espacer : temps entre deux consommations (min)' },
+  ];
+}
+export function goalLabel(metric) {
+  if (metric?.startsWith('method:')) return catById(metric.slice(7))?.name || metric.slice(7);
+  return metricOf(metric)?.label || metric;
+}

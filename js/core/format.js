@@ -74,6 +74,7 @@ export const UNITS = {
   ml: { id: 'ml', label: 'millilitres', short: 'ml' },
   drop: { id: 'drop', label: 'gouttes', short: 'gouttes' },
   unit: { id: 'unit', label: 'unités', short: 'u.' },
+  puff: { id: 'puff', label: 'bouffées', short: 'bouffées' },
 };
 
 export function fmtQty(x, unit = 'g') {
